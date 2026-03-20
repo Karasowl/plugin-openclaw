@@ -1,0 +1,27 @@
+{
+  "agents": [
+    {
+      "id": "claude-agent",
+      "label": "Claude Code"
+    },
+    {
+      "id": "codex-agent",
+      "label": "Codex"
+    }
+  ],
+  "defaultOwnership": {},
+  "coordinationFiles": {
+    "locks": ".agent-locks.json",
+    "mail": ".agent-mail.json",
+    "instructions": [
+      "CLAUDE.md",
+      "AGENTS.md"
+    ]
+  },
+  "testCommands": [
+    "npx tsc --noEmit",
+    "npx vitest run",
+    "npx vite build"
+  ],
+  "lastSynchronizedAt": "2026-03-19T22:32:45.0740018-06:00"
+}

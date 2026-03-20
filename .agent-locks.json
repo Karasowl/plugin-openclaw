@@ -1,0 +1,9 @@
+{
+  "locks": [],
+  "schema": {
+    "file": "ruta del archivo",
+    "agent": "claude-agent | codex-agent",
+    "task": "descripcion breve de que esta haciendo",
+    "since": "ISO 8601 timestamp"
+  }
+}

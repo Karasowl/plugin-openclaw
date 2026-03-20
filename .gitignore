@@ -1,0 +1,11 @@
+# Common generated files
+node_modules/
+dist/
+coverage/
+
+# Coordination files must stay tracked
+!.agent-locks.json
+!.agent-mail.json
+!.agent-config.json
+!AGENTS.md
+!CLAUDE.md

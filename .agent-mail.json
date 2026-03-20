@@ -1,0 +1,11 @@
+{
+  "messages": [],
+  "schema": {
+    "from": "agent id",
+    "to": "agent id",
+    "subject": "asunto",
+    "body": "mensaje",
+    "timestamp": "ISO 8601",
+    "read": false
+  }
+}
