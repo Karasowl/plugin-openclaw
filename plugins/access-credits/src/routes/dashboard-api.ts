@@ -5,7 +5,15 @@ import {
   handleDashboardPage,
   handleGetConfig,
   handlePatchConfig,
+  handleGetPrompts,
+  handlePromptRoute,
+  handleCreatePrompt,
+  handleGetGroups,
+  handleGetEvents,
+  handleGetMessaging,
+  handlePatchMessaging,
   type ConfigContainer,
+  type DashboardStores,
 } from "../dashboard/api-handlers.js";
 
 interface PluginApi {
@@ -42,7 +50,6 @@ function parseBody(req: IncomingMessage): Promise<Record<string, unknown>> {
 
 /**
  * Validate Bearer token from Authorization header or ?token= query param.
- * Returns true if valid, sends 401 and returns false otherwise.
  */
 function validateToken(req: IncomingMessage, res: ServerResponse, gatewayToken: string): boolean {
   if (!gatewayToken) {
@@ -53,7 +60,7 @@ function validateToken(req: IncomingMessage, res: ServerResponse, gatewayToken: 
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
   const url = new URL(req.url ?? "", "http://localhost");
   const queryToken = url.searchParams.get("token");
-  
+
   if (bearerToken === gatewayToken || queryToken === gatewayToken) {
     return true;
   }
@@ -130,11 +137,8 @@ export function registerDashboardRoutes(
   rawConfig: Record<string, unknown>,
   runtimeStore: RuntimeStore,
   gatewayToken: string,
+  dashboardStores?: DashboardStores,
 ): void {
-  // All routes use auth:"plugin" (bypasses gateway auth middleware).
-  // Token is validated manually in each handler against the auto-detected gateway token.
-  // This ensures browser access works with both ?token= query param AND Authorization: Bearer header.
-
   // Dashboard HTML page
   api.registerHttpRoute({
     path: "/plugins/access-credits",
@@ -158,7 +162,7 @@ export function registerDashboardRoutes(
       if (!validateToken(req, res, gatewayToken)) return true;
       const stats = store.getStats();
       return json(res, 200, {
-        version: "0.1.0", mode: configContainer.current.mode, storeStatus: "ok",
+        version: "0.2.0", mode: configContainer.current.mode, storeStatus: "ok",
         totalUsers: stats.totalUsers, totalCreditsInCirculation: stats.totalCreditsInCirculation,
         totalTransactions: stats.totalTransactions,
       });
@@ -209,6 +213,73 @@ export function registerDashboardRoutes(
       return handleUserRoute(req, res, store, 3);
     },
   });
+
+  // --- New routes for dashboard v2 ---
+
+  if (dashboardStores) {
+    // Prompts list + create
+    api.registerHttpRoute({
+      path: "/plugins/access-credits/prompts",
+      auth: "plugin",
+      match: "exact",
+      handler: async (req, res) => {
+        if (!validateToken(req, res, gatewayToken)) return true;
+        if (req.method === "POST") return handleCreatePrompt(req, res, dashboardStores);
+        return handleGetPrompts(res, dashboardStores);
+      },
+    });
+
+    // Prompt detail + update + history + deploy (prefix match)
+    api.registerHttpRoute({
+      path: "/plugins/access-credits/prompts/",
+      auth: "plugin",
+      match: "prefix",
+      handler: async (req, res) => {
+        if (!validateToken(req, res, gatewayToken)) return true;
+        const url = new URL(req.url ?? "", "http://localhost");
+        const parts = url.pathname.split("/").filter(Boolean);
+        // parts: ["plugins", "access-credits", "prompts", "<id>", "<sub>?"]
+        const promptId = parts[3];
+        const subPath = parts[4];
+        if (!promptId) return json(res, 400, { error: "promptId is required" });
+        return handlePromptRoute(req, res, dashboardStores, promptId, subPath);
+      },
+    });
+
+    // Groups
+    api.registerHttpRoute({
+      path: "/plugins/access-credits/groups",
+      auth: "plugin",
+      match: "exact",
+      handler: (req, res) => {
+        if (!validateToken(req, res, gatewayToken)) return true;
+        return handleGetGroups(res, dashboardStores);
+      },
+    });
+
+    // Events
+    api.registerHttpRoute({
+      path: "/plugins/access-credits/events",
+      auth: "plugin",
+      match: "exact",
+      handler: (req, res) => {
+        if (!validateToken(req, res, gatewayToken)) return true;
+        return handleGetEvents(res, dashboardStores);
+      },
+    });
+
+    // Messaging
+    api.registerHttpRoute({
+      path: "/plugins/access-credits/messaging",
+      auth: "plugin",
+      match: "exact",
+      handler: async (req, res) => {
+        if (!validateToken(req, res, gatewayToken)) return true;
+        if (req.method === "PATCH") return handlePatchMessaging(req, res, dashboardStores);
+        return handleGetMessaging(res, dashboardStores);
+      },
+    });
+  }
 
   // Legacy routes
   api.registerHttpRoute({ path: "/access-credits/users", auth: "plugin", match: "exact",

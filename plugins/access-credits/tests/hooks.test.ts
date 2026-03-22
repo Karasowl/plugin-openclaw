@@ -531,7 +531,7 @@ describe("MessageSendingGateHandler", () => {
 // =====================================================================
 // GateState sessionKey reuse
 // =====================================================================
-
+  
 describe("GateState sessionKey reuse", () => {
   it("does not carry stale denial when sessionKey is reused", () => {
     // Simulate a denied session that was never cleaned up

@@ -1,6 +1,10 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { createCreditsStore } from "./store/credits-store.js";
 import { createFileBackedStore } from "./store/file-persistence.js";
+import { createPromptsStore } from "./store/prompts-store.js";
+import { createGroupsStore } from "./store/groups-store.js";
+import { createEventsStore } from "./store/events-store.js";
+import { createMessagingStore } from "./store/messaging-store.js";
 import { resolveConfig } from "./config.js";
 import { loadConfigOverrides } from "./config-store.js";
 import { createMessageGateHandler } from "./hooks/message-gate.js";
@@ -75,8 +79,14 @@ export default {
 
     const store = createCreditsStore(runtimeStore, () => configContainer.current.initialCredits);
 
+    // Dashboard v2 stores
+    const promptsStore = createPromptsStore(runtimeStore);
+    const groupsStore = createGroupsStore(runtimeStore);
+    const eventsStore = createEventsStore(runtimeStore);
+    const messagingStore = createMessagingStore(runtimeStore);
+
     // === LAYER 0: Internal hook with name ===
-    api.registerHook("message:received", createMessageGateHandler(store, getConfig), {
+    api.registerHook("message:received", createMessageGateHandler(store, getConfig, groupsStore, eventsStore), {
       name: "access-credits-message-gate"
     });
 
@@ -97,6 +107,7 @@ export default {
       rawConfig,
       runtimeStore,
       gatewayToken,
+      { prompts: promptsStore, groups: groupsStore, events: eventsStore, messaging: messagingStore },
     );
   },
 };

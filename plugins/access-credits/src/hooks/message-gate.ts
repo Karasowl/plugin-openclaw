@@ -1,4 +1,6 @@
 import type { CreditsStore } from "../store/credits-store.js";
+import type { GroupsStore } from "../store/groups-store.js";
+import type { EventsStore } from "../store/events-store.js";
 import type { AccessCreditsConfig } from "../config.js";
 import { markSessionDenied, markSessionTriggered, setSender, setChannelSession } from "../gate-state.js";
 
@@ -53,7 +55,12 @@ function extractSenderId(ctx: MessageReceivedContext): string {
   return (typeof metaSenderId === "string" ? metaSenderId : null) ?? ctx.from;
 }
 
-export function createMessageGateHandler(store: CreditsStore, getConfig: () => AccessCreditsConfig) {
+export function createMessageGateHandler(
+  store: CreditsStore,
+  getConfig: () => AccessCreditsConfig,
+  groupsStore?: GroupsStore,
+  eventsStore?: EventsStore,
+) {
   return async (event: InternalHookEvent): Promise<void> => {
     if (event.type !== "message" || event.action !== "received") return;
     if (!isMessageReceivedContext(event.context)) return;
@@ -63,6 +70,18 @@ export function createMessageGateHandler(store: CreditsStore, getConfig: () => A
     if (!content) return;
 
     const config = getConfig();
+
+    // Track group metadata from every message (not just triggered ones)
+    if (groupsStore && ctx.channelId) {
+      const chatTitle = typeof ctx.metadata?.chatTitle === "string"
+        ? ctx.metadata.chatTitle
+        : typeof ctx.metadata?.groupName === "string"
+          ? ctx.metadata.groupName
+          : "";
+      if (chatTitle) {
+        groupsStore.upsert(ctx.channelId, chatTitle);
+      }
+    }
 
     if (!matchesTrigger(content, config.triggerHashtags, config.triggerCommands)) return;
 
@@ -89,6 +108,11 @@ export function createMessageGateHandler(store: CreditsStore, getConfig: () => A
         : undefined;
     const user = store.getOrCreateUser(senderId, senderName);
 
+    // Emit event for new user creation
+    if (user.credits === config.initialCredits && user.totalSpent === 0 && user.totalEarned === config.initialCredits) {
+      eventsStore?.push("user_joined", `New user: ${senderName || senderId} (${config.initialCredits} credits)`, { userId: senderId });
+    }
+
     // Cooldown check BEFORE recording interaction (both modes)
     if (store.isOnCooldown(senderId, config.cooldownSeconds)) {
       if (config.mode === "enforce") {
@@ -114,6 +138,8 @@ export function createMessageGateHandler(store: CreditsStore, getConfig: () => A
       event.messages.push(
         `⛔ No tienes créditos suficientes. Tu balance: ${result.balance}. Necesitas ${config.costPerMessage} para interactuar con el bot.`,
       );
+    } else {
+      eventsStore?.push("credits_deducted", `${senderName || senderId}: -${config.costPerMessage} credit (balance: ${result.balance})`, { userId: senderId });
     }
   };
 }
