@@ -1,5 +1,5 @@
 {
-  "name": "@isma/openclaw-plugin-access-credits",
+  "name": "@isma/access-credits",
   "version": "0.1.0",
   "description": "Credit-based access control for OpenClaw bots. Rate limit bot usage per user with a points system. Users earn credits by contributing valuable content. Includes message interception middleware, usage metering, group management, and admin tools.",
   "type": "module",

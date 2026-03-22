@@ -26,6 +26,13 @@ export const DEFAULT_CONFIG: AccessCreditsConfig = {
   cooldownSeconds: 0,
 };
 
+/** Coerce a value to string[]. Handles strings (comma-separated), arrays, and fallback. */
+function toStringArray(value: unknown, fallback: string[]): string[] {
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  if (typeof value === "string") return value.split(",").map((s) => s.trim()).filter(Boolean);
+  return fallback;
+}
+
 export function resolveConfig(
   raw: Record<string, unknown>,
   overrides: Partial<AccessCreditsConfig> = {},
@@ -34,9 +41,9 @@ export function resolveConfig(
     mode: overrides.mode ?? (raw.mode as AccessCreditsConfig["mode"]) ?? DEFAULT_CONFIG.mode,
     initialCredits: overrides.initialCredits ?? (raw.initialCredits as number) ?? DEFAULT_CONFIG.initialCredits,
     costPerMessage: overrides.costPerMessage ?? (raw.costPerMessage as number) ?? DEFAULT_CONFIG.costPerMessage,
-    triggerHashtags: overrides.triggerHashtags ?? (raw.triggerHashtags as string[]) ?? DEFAULT_CONFIG.triggerHashtags,
-    triggerCommands: overrides.triggerCommands ?? (raw.triggerCommands as string[]) ?? DEFAULT_CONFIG.triggerCommands,
-    adminUsers: overrides.adminUsers ?? (raw.adminUsers as string[]) ?? DEFAULT_CONFIG.adminUsers,
+    triggerHashtags: toStringArray(overrides.triggerHashtags ?? raw.triggerHashtags, DEFAULT_CONFIG.triggerHashtags),
+    triggerCommands: toStringArray(overrides.triggerCommands ?? raw.triggerCommands, DEFAULT_CONFIG.triggerCommands),
+    adminUsers: toStringArray(overrides.adminUsers ?? raw.adminUsers, DEFAULT_CONFIG.adminUsers),
     fallbackModel: overrides.fallbackModel ?? (raw.fallbackModel as string) ?? DEFAULT_CONFIG.fallbackModel,
     evaluateContributions: overrides.evaluateContributions ?? (raw.evaluateContributions as boolean) ?? DEFAULT_CONFIG.evaluateContributions,
     contributionReward: overrides.contributionReward ?? (raw.contributionReward as number) ?? DEFAULT_CONFIG.contributionReward,
