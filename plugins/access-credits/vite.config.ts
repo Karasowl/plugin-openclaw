@@ -9,7 +9,7 @@ export default defineConfig({
       fileName: "index",
     },
     rollupOptions: {
-      external: [/^openclaw\//],
+      external: [/^openclaw\//, /^node:/, "fs", "path", "os", "util", "events", "stream", "crypto", "http", "https", "url", "querystring", "zlib", "buffer", "child_process", "net", "tls"],
     },
     outDir: "dist",
   },
