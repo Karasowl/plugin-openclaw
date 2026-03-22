@@ -5,6 +5,8 @@ export interface AccessCreditsConfig {
   triggerHashtags: string[];
   triggerCommands: string[];
   adminUsers: string[];
+  agentIds: string[];
+  chatTypes: string[];
   fallbackModel: string;
   evaluateContributions: boolean;
   contributionReward: number;
@@ -19,6 +21,8 @@ export const DEFAULT_CONFIG: AccessCreditsConfig = {
   triggerHashtags: ["#ask", "#bot"],
   triggerCommands: ["/ask", "/bot"],
   adminUsers: [],
+  agentIds: [],
+  chatTypes: [],
   fallbackModel: "cheapest",
   evaluateContributions: true,
   contributionReward: 2,
@@ -44,6 +48,8 @@ export function resolveConfig(
     triggerHashtags: toStringArray(overrides.triggerHashtags ?? raw.triggerHashtags, DEFAULT_CONFIG.triggerHashtags),
     triggerCommands: toStringArray(overrides.triggerCommands ?? raw.triggerCommands, DEFAULT_CONFIG.triggerCommands),
     adminUsers: toStringArray(overrides.adminUsers ?? raw.adminUsers, DEFAULT_CONFIG.adminUsers),
+    agentIds: toStringArray(overrides.agentIds ?? raw.agentIds, DEFAULT_CONFIG.agentIds),
+    chatTypes: toStringArray(overrides.chatTypes ?? raw.chatTypes, DEFAULT_CONFIG.chatTypes),
     fallbackModel: overrides.fallbackModel ?? (raw.fallbackModel as string) ?? DEFAULT_CONFIG.fallbackModel,
     evaluateContributions: overrides.evaluateContributions ?? (raw.evaluateContributions as boolean) ?? DEFAULT_CONFIG.evaluateContributions,
     contributionReward: overrides.contributionReward ?? (raw.contributionReward as number) ?? DEFAULT_CONFIG.contributionReward,

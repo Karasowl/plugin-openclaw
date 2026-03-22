@@ -32,11 +32,36 @@ function parseBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   });
 }
 
+/**
+ * Serve the dashboard page.
+ * Validates ?token= against the auto-detected gateway token.
+ * On success, injects the token into the HTML so the client JS
+ * can authenticate API calls via Authorization: Bearer header.
+ */
 export function handleDashboardPage(
+  req: IncomingMessage,
   res: ServerResponse,
   configContainer: ConfigContainer,
+  gatewayToken: string,
 ): boolean {
-  const html = buildDashboardHtml(configContainer.current);
+  if (!gatewayToken) {
+    res.statusCode = 503;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.end("Dashboard unavailable: gateway auth token could not be detected.");
+    return true;
+  }
+
+  const url = new URL(req.url ?? "", "http://localhost");
+  const providedToken = url.searchParams.get("token") ?? "";
+
+  if (providedToken !== gatewayToken) {
+    res.statusCode = 401;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.end("Unauthorized. Access the dashboard with ?token=YOUR_GATEWAY_TOKEN");
+    return true;
+  }
+
+  const html = buildDashboardHtml(configContainer.current, providedToken);
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
@@ -71,12 +96,10 @@ export async function handlePatchConfig(
     return json(res, 400, { errors: validation.errors });
   }
 
-  // Merge with existing overrides
   const existing = loadConfigOverrides(runtimeStore);
   const merged = { ...existing, ...validation.sanitized };
   saveConfigOverrides(runtimeStore, merged);
 
-  // Update live config
   configContainer.current = resolveConfig(rawConfig, merged);
 
   return json(res, 200, { config: configContainer.current });

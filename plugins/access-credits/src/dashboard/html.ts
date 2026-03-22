@@ -2,8 +2,9 @@ import { CSS_STYLES } from "./styles.js";
 import { CLIENT_SCRIPT } from "./client.js";
 import type { AccessCreditsConfig } from "../config.js";
 
-export function buildDashboardHtml(config: AccessCreditsConfig): string {
+export function buildDashboardHtml(config: AccessCreditsConfig, authToken?: string): string {
   const configJson = JSON.stringify(config).replace(/</g, "\\u003c");
+  const tokenJson = authToken ? JSON.stringify(authToken).replace(/</g, "\\u003c") : '""';
 
   return `<!doctype html>
 <html lang="es">
@@ -35,6 +36,7 @@ export function buildDashboardHtml(config: AccessCreditsConfig): string {
   <script>
     window.__INITIAL_CONFIG__ = ${configJson};
     window.__API_BASE__ = '/plugins/access-credits';
+    window.__AUTH_TOKEN__ = ${tokenJson};
   </script>
   <script>${CLIENT_SCRIPT}</script>
 </body>

@@ -5,7 +5,6 @@ import {
   handleDashboardPage,
   handleGetConfig,
   handlePatchConfig,
-  handleHealthCheck,
   type ConfigContainer,
 } from "../dashboard/api-handlers.js";
 
@@ -41,6 +40,27 @@ function parseBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   });
 }
 
+/**
+ * Validate Bearer token from Authorization header or ?token= query param.
+ * Returns true if valid, sends 401 and returns false otherwise.
+ */
+function validateToken(req: IncomingMessage, res: ServerResponse, gatewayToken: string): boolean {
+  if (!gatewayToken) {
+    json(res, 503, { error: "Gateway token not configured" });
+    return false;
+  }
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  const url = new URL(req.url ?? "", "http://localhost");
+  const queryToken = url.searchParams.get("token");
+  
+  if (bearerToken === gatewayToken || queryToken === gatewayToken) {
+    return true;
+  }
+  json(res, 401, { error: "Unauthorized" });
+  return false;
+}
+
 function handleUserRoute(
   req: IncomingMessage,
   res: ServerResponse,
@@ -51,14 +71,10 @@ function handleUserRoute(
   const parts = url.pathname.split("/").filter(Boolean);
   const userId = parts[pathPrefix];
 
-  if (!userId) {
-    return json(res, 400, { error: "userId is required" });
-  }
+  if (!userId) return json(res, 400, { error: "userId is required" });
 
   const user = store.getUser(userId);
-  if (!user) {
-    return json(res, 404, { error: "User not found" });
-  }
+  if (!user) return json(res, 404, { error: "User not found" });
 
   if (parts[pathPrefix + 1] === "transactions") {
     const limit = parseInt(url.searchParams.get("limit") ?? "50", 10);
@@ -69,33 +85,22 @@ function handleUserRoute(
   if (req.method === "POST") {
     return (async () => {
       let body: Record<string, unknown>;
-      try {
-        body = await parseBody(req);
-      } catch {
-        return json(res, 400, { error: "Invalid JSON body" });
-      }
+      try { body = await parseBody(req); } catch { return json(res, 400, { error: "Invalid JSON body" }); }
 
       const amount = body.amount as number;
       const reason = (body.reason as string) ?? "Admin adjustment";
       const action = body.action as string;
 
-      if (typeof amount !== "number" || amount <= 0) {
-        return json(res, 400, { error: "amount must be a positive number" });
-      }
+      if (typeof amount !== "number" || amount <= 0) return json(res, 400, { error: "amount must be a positive number" });
 
       if (action === "add") {
         const result = store.addCredits(userId, amount, reason, "admin_add");
         return json(res, 200, { success: true, balance: result.balance });
       } else if (action === "remove") {
-        if (amount > user.credits) {
-          return json(res, 400, {
-            error: `Cannot remove ${amount} credits. User only has ${user.credits}.`,
-          });
-        }
+        if (amount > user.credits) return json(res, 400, { error: `Cannot remove ${amount}. User has ${user.credits}.` });
         const result = store.addCredits(userId, -amount, reason, "admin_remove");
         return json(res, 200, { success: true, balance: result.balance });
       }
-
       return json(res, 400, { error: "action must be 'add' or 'remove'" });
     })();
   }
@@ -103,25 +108,19 @@ function handleUserRoute(
   return json(res, 200, { user });
 }
 
-function handleUsersRoute(
-  req: IncomingMessage,
-  res: ServerResponse,
-  store: CreditsStore,
-): boolean {
+function handleUsersRoute(req: IncomingMessage, res: ServerResponse, store: CreditsStore): boolean {
   const url = new URL(req.url ?? "", "http://localhost");
   let users = store.getAllUsers();
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
   if (q) {
-    users = users.filter(
-      (u) =>
-        u.userId.toLowerCase().includes(q) ||
-        (u.displayName && u.displayName.toLowerCase().includes(q)),
+    users = users.filter((u) =>
+      u.userId.toLowerCase().includes(q) ||
+      (u.displayName && u.displayName.toLowerCase().includes(q)),
     );
   }
   const offset = Math.max(0, parseInt(url.searchParams.get("offset") ?? "0", 10));
   const limit = Math.max(1, Math.min(200, parseInt(url.searchParams.get("limit") ?? "50", 10)));
-  const paginated = users.slice(offset, offset + limit);
-  return json(res, 200, { users: paginated, total: users.length });
+  return json(res, 200, { users: users.slice(offset, offset + limit), total: users.length });
 }
 
 export function registerDashboardRoutes(
@@ -130,102 +129,92 @@ export function registerDashboardRoutes(
   configContainer: ConfigContainer,
   rawConfig: Record<string, unknown>,
   runtimeStore: RuntimeStore,
+  gatewayToken: string,
 ): void {
-  // ============================================================
-  // New routes: /plugins/access-credits/* (auth: gateway)
-  // ============================================================
+  // All routes use auth:"plugin" (bypasses gateway auth middleware).
+  // Token is validated manually in each handler against the auto-detected gateway token.
+  // This ensures browser access works with both ?token= query param AND Authorization: Bearer header.
 
   // Dashboard HTML page
   api.registerHttpRoute({
     path: "/plugins/access-credits",
-    auth: "gateway",
+    auth: "plugin",
     match: "exact",
-    handler: (_req, res) => handleDashboardPage(res, configContainer),
+    handler: (req, res) => handleDashboardPage(req, res, configContainer, gatewayToken),
   });
-
   api.registerHttpRoute({
     path: "/plugins/access-credits/",
-    auth: "gateway",
+    auth: "plugin",
     match: "exact",
-    handler: (_req, res) => handleDashboardPage(res, configContainer),
+    handler: (req, res) => handleDashboardPage(req, res, configContainer, gatewayToken),
   });
 
-  // Health check
+  // Health
   api.registerHttpRoute({
     path: "/plugins/access-credits/health",
-    auth: "gateway",
+    auth: "plugin",
     match: "exact",
-    handler: (_req, res) => handleHealthCheck(res, store, configContainer),
+    handler: (req, res) => {
+      if (!validateToken(req, res, gatewayToken)) return true;
+      const stats = store.getStats();
+      return json(res, 200, {
+        version: "0.1.0", mode: configContainer.current.mode, storeStatus: "ok",
+        totalUsers: stats.totalUsers, totalCreditsInCirculation: stats.totalCreditsInCirculation,
+        totalTransactions: stats.totalTransactions,
+      });
+    },
   });
 
   // Stats
   api.registerHttpRoute({
     path: "/plugins/access-credits/stats",
-    auth: "gateway",
+    auth: "plugin",
     match: "exact",
-    handler: async (_req, res) => json(res, 200, store.getStats()),
+    handler: (req, res) => {
+      if (!validateToken(req, res, gatewayToken)) return true;
+      return json(res, 200, store.getStats());
+    },
   });
 
-  // Users (paginated)
+  // Users
   api.registerHttpRoute({
     path: "/plugins/access-credits/users",
-    auth: "gateway",
+    auth: "plugin",
     match: "exact",
-    handler: async (req, res) => handleUsersRoute(req, res, store),
+    handler: (req, res) => {
+      if (!validateToken(req, res, gatewayToken)) return true;
+      return handleUsersRoute(req, res, store);
+    },
   });
 
-  // Config (GET + PATCH)
+  // Config
   api.registerHttpRoute({
     path: "/plugins/access-credits/config",
-    auth: "gateway",
+    auth: "plugin",
     match: "exact",
     handler: async (req, res) => {
-      if (req.method === "PATCH") {
-        return handlePatchConfig(req, res, rawConfig, runtimeStore, configContainer);
-      }
+      if (!validateToken(req, res, gatewayToken)) return true;
+      if (req.method === "PATCH") return handlePatchConfig(req, res, rawConfig, runtimeStore, configContainer);
       return handleGetConfig(res, configContainer);
     },
   });
 
-  // User detail + transactions + credit adjustment
+  // User detail + transactions + adjustment
   api.registerHttpRoute({
     path: "/plugins/access-credits/user",
-    auth: "gateway",
+    auth: "plugin",
     match: "prefix",
     handler: async (req, res) => {
-      // /plugins/access-credits/user/:userId[/transactions]
+      if (!validateToken(req, res, gatewayToken)) return true;
       return handleUserRoute(req, res, store, 3);
     },
   });
 
-  // ============================================================
-  // Legacy routes: /access-credits/* (auth: plugin)
-  // ============================================================
-
-  api.registerHttpRoute({
-    path: "/access-credits/users",
-    auth: "plugin",
-    match: "exact",
-    handler: async (_req, res) => {
-      const users = store.getAllUsers();
-      return json(res, 200, { users });
-    },
-  });
-
-  api.registerHttpRoute({
-    path: "/access-credits/stats",
-    auth: "plugin",
-    match: "exact",
-    handler: async (_req, res) => json(res, 200, store.getStats()),
-  });
-
-  api.registerHttpRoute({
-    path: "/access-credits/user",
-    auth: "plugin",
-    match: "prefix",
-    handler: async (req, res) => {
-      // /access-credits/user/:userId[/transactions]
-      return handleUserRoute(req, res, store, 2);
-    },
-  });
+  // Legacy routes
+  api.registerHttpRoute({ path: "/access-credits/users", auth: "plugin", match: "exact",
+    handler: async (req, res) => { if (!validateToken(req, res, gatewayToken)) return true; return json(res, 200, { users: store.getAllUsers() }); } });
+  api.registerHttpRoute({ path: "/access-credits/stats", auth: "plugin", match: "exact",
+    handler: async (req, res) => { if (!validateToken(req, res, gatewayToken)) return true; return json(res, 200, store.getStats()); } });
+  api.registerHttpRoute({ path: "/access-credits/user", auth: "plugin", match: "prefix",
+    handler: async (req, res) => { if (!validateToken(req, res, gatewayToken)) return true; return handleUserRoute(req, res, store, 2); } });
 }

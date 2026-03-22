@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Access Credit | Groups &amp; Users Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "surface-variant": "#e0e3e5",
+                "inverse-primary": "#b4c5ff",
+                "primary-fixed": "#dbe1ff",
+                "on-secondary-fixed-variant": "#38485d",
+                "error": "#ba1a1a",
+                "surface-bright": "#f7f9fb",
+                "secondary-fixed": "#d3e4fe",
+                "on-tertiary-fixed-variant": "#004c6e",
+                "surface-dim": "#d8dadc",
+                "on-secondary-container": "#54647a",
+                "surface-tint": "#0053db",
+                "on-primary-fixed-variant": "#003ea8",
+                "tertiary-fixed": "#c9e6ff",
+                "background": "#f7f9fb",
+                "primary-container": "#00174b",
+                "surface-container-low": "#f2f4f6",
+                "on-tertiary-container": "#008cc7",
+                "on-surface-variant": "#45464d",
+                "on-primary-container": "#497cff",
+                "on-tertiary": "#ffffff",
+                "inverse-surface": "#2d3133",
+                "surface-container-highest": "#e0e3e5",
+                "surface": "#f7f9fb",
+                "surface-container-high": "#e6e8ea",
+                "primary-fixed-dim": "#b4c5ff",
+                "tertiary": "#000000",
+                "primary": "#000000",
+                "on-tertiary-fixed": "#001e2f",
+                "surface-container": "#eceef0",
+                "outline": "#76777d",
+                "on-secondary-fixed": "#0b1c30",
+                "on-error-container": "#93000a",
+                "on-background": "#191c1e",
+                "outline-variant": "#c6c6cd",
+                "on-secondary": "#ffffff",
+                "on-primary": "#ffffff",
+                "secondary": "#505f76",
+                "secondary-fixed-dim": "#b7c8e1",
+                "tertiary-fixed-dim": "#89ceff",
+                "surface-container-lowest": "#ffffff",
+                "on-surface": "#191c1e",
+                "tertiary-container": "#001e2f",
+                "on-error": "#ffffff",
+                "secondary-container": "#d0e1fb",
+                "inverse-on-surface": "#eff1f3",
+                "on-primary-fixed": "#00174b",
+                "error-container": "#ffdad6"
+              },
+              fontFamily: {
+                "headline": ["Manrope"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        h1, h2, h3, .font-headline {
+            font-family: 'Manrope', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e0e3e5;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="text-on-background antialiased">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full z-40 bg-slate-50 dark:bg-slate-900 w-64 flex flex-col border-r-0">
+<div class="px-6 py-8">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<div>
+<h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50 leading-none">Access Credit</h1>
+<p class="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mt-1">Admin Atelier</p>
+</div>
+</div>
+<button class="w-full bg-primary-container text-white py-3 px-4 rounded-xl font-semibold text-sm mb-8 flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95">
+<span class="material-symbols-outlined text-sm">add_circle</span>
+                New Orchestration
+            </button>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-sm font-semibold">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-900 dark:text-white font-bold bg-white dark:bg-slate-800 rounded-lg transition-all shadow-sm" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="text-sm">Groups &amp; Users</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+<span class="text-sm font-semibold">System Prompts</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-sm font-semibold">Settings</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto px-6 py-8 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-slate-900 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-sm font-semibold">Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-error transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="text-sm font-semibold">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar Shell -->
+<header class="sticky top-0 z-30 flex justify-between items-center px-12 py-5 w-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl">
+<div class="flex-1 max-w-xl">
+<div class="relative group">
+<span class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+<span class="material-symbols-outlined text-xl">search</span>
+</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2.5 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary-container transition-all placeholder:text-slate-400" placeholder="Search across orchestrations..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 border-r border-slate-200 pr-6">
+<button class="text-slate-500 hover:text-primary transition-colors focus:ring-2 ring-slate-200 rounded-full p-1">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-slate-500 hover:text-primary transition-colors focus:ring-2 ring-slate-200 rounded-full p-1">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="text-xs font-bold text-on-background">Admin User</p>
+<p class="text-[10px] text-on-surface-variant font-medium">Super Editor</p>
+</div>
+<img alt="Admin User Profile" class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" data-alt="Close up portrait of a professional male administrator" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDE63eAKfNjUnQmlK6zCzVDBHPhsBspPf1UMxO2zgqaIVdHuywQEqTKQE1bwHIrojPFu62vnV0BHvFD26XzCsB6rtK--Yeuv0Tte_wVHXmtfTuG0XD8OeNFmZr6XDGzXn4PsocnjxfcrstIEabsKQE_cS-KiNq4e0C6ytsEdMAf2xnQvNy3BdFm-tevlATZpOn3BML0B7T4XqTFw5lBFJhkMKS5o5vc_h8gs33ROujg30F3EqKT_4ShVxzcPUxlNZf2pckb3zn6JMs"/>
+</div>
+</div>
+</header>
+<!-- Content Area -->
+<div class="px-12 py-10 max-w-7xl mx-auto">
+<!-- Page Header -->
+<div class="mb-12">
+<h2 class="text-4xl font-extrabold text-primary tracking-tight mb-2">Groups &amp; Users</h2>
+<p class="text-on-surface-variant max-w-2xl font-body">Manage individual contributor access, score assignment rules, and monitor global engagement metrics across your Telegram ecosystems.</p>
+</div>
+<!-- Dashboard Bento Grid -->
+<div class="grid grid-cols-12 gap-8 mb-12">
+<!-- Global Oversight Card (The "Anchor") -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest p-8 rounded-xl shadow-sm border-none flex flex-col justify-between overflow-hidden relative">
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-8">
+<div>
+<span class="text-[10px] font-bold text-on-tertiary-container bg-secondary-container px-3 py-1 rounded-full uppercase tracking-tighter">Global Oversight</span>
+<h3 class="text-2xl font-bold mt-4 text-primary tracking-tight">Ecosystem Health</h3>
+</div>
+<div class="flex gap-2">
+<div class="bg-surface-container-low p-4 rounded-xl text-center min-w-[100px]">
+<p class="text-3xl font-extrabold text-primary">1,842</p>
+<p class="text-[10px] font-semibold text-on-surface-variant uppercase">Monitored Users</p>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl text-center min-w-[100px]">
+<p class="text-3xl font-extrabold text-primary">16</p>
+<p class="text-[10px] font-semibold text-on-surface-variant uppercase">Groups</p>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-6">
+<div class="bg-slate-50 p-6 rounded-xl border-l-4 border-on-tertiary-container">
+<p class="text-xs font-semibold text-on-surface-variant mb-1">Active Sentiment</p>
+<p class="text-xl font-bold text-primary">High Positive</p>
+<div class="w-full bg-slate-200 h-1.5 mt-3 rounded-full overflow-hidden">
+<div class="bg-on-tertiary-container h-full w-[82%]"></div>
+</div>
+</div>
+<div class="bg-slate-50 p-6 rounded-xl border-l-4 border-primary-container">
+<p class="text-xs font-semibold text-on-surface-variant mb-1">Score Accuracy</p>
+<p class="text-xl font-bold text-primary">94.8%</p>
+<div class="w-full bg-slate-200 h-1.5 mt-3 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full w-[94%]"></div>
+</div>
+</div>
+<div class="bg-slate-50 p-6 rounded-xl border-l-4 border-slate-300">
+<p class="text-xs font-semibold text-on-surface-variant mb-1">Response Latency</p>
+<p class="text-xl font-bold text-primary">1.2s</p>
+<div class="w-full bg-slate-200 h-1.5 mt-3 rounded-full overflow-hidden">
+<div class="bg-slate-400 h-full w-[24%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Live Events Log -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container-low p-8 rounded-xl flex flex-col h-full max-h-[400px]">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-sm font-bold text-primary uppercase tracking-widest">Live Events</h3>
+<span class="flex h-2 w-2 rounded-full bg-error animate-pulse"></span>
+</div>
+<div class="space-y-6 overflow-y-auto custom-scrollbar pr-2">
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm text-on-secondary-fixed-variant">bolt</span>
+</div>
+<div>
+<p class="text-xs font-bold text-primary">Erik Lindholm <span class="font-normal text-on-surface-variant">scored +15 pts</span></p>
+<p class="text-[10px] text-outline mt-0.5">2 mins ago in Global Markets</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-full bg-on-tertiary-container/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm text-on-tertiary-container">person_add</span>
+</div>
+<div>
+<p class="text-xs font-bold text-primary">Sarah Chen <span class="font-normal text-on-surface-variant">joined group</span></p>
+<p class="text-[10px] text-outline mt-0.5">14 mins ago in Tech Alpha</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-full bg-error/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm text-error">warning</span>
+</div>
+<div>
+<p class="text-xs font-bold text-primary">System <span class="font-normal text-on-surface-variant">flagged spam activity</span></p>
+<p class="text-[10px] text-outline mt-0.5">32 mins ago in Crypto Hub</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-full bg-primary-container/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm text-primary-container">edit</span>
+</div>
+<div>
+<p class="text-xs font-bold text-primary">Score Rules <span class="font-normal text-on-surface-variant">updated</span></p>
+<p class="text-[10px] text-outline mt-0.5">1 hour ago by Admin</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Group Management Section -->
+<div class="space-y-12">
+<!-- Group Item: Tech Alpha -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+<div class="md:sticky md:top-32">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-14 h-14 bg-gradient-to-br from-primary-container to-blue-900 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                                T
+                            </div>
+<div>
+<h4 class="text-xl font-bold text-primary tracking-tight">Tech Alpha</h4>
+<span class="text-[10px] font-bold text-on-tertiary-container bg-on-tertiary-container/10 px-2 py-0.5 rounded-full uppercase">Active</span>
+</div>
+</div>
+<p class="text-sm text-on-surface-variant mb-6 leading-relaxed">Primary engineering and product development group. 42 contributors monitored.</p>
+<div class="bg-surface-container-low rounded-xl p-5">
+<div class="flex items-center justify-between mb-4">
+<span class="text-xs font-bold text-primary">Score Assignment</span>
+<!-- Toggle Switch -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-on-tertiary-container"></div>
+</label>
+</div>
+<p class="text-[11px] text-outline leading-tight">Enabling score assignment allows the agent to automatically award points based on prompt adherence.</p>
+</div>
+</div>
+<!-- Contributors List -->
+<div class="md:col-span-2 bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<div class="p-6 border-b border-surface-container flex justify-between items-center">
+<h5 class="text-sm font-bold text-on-background">Primary Contributors</h5>
+<button class="text-xs font-semibold text-on-primary-container">View all 42</button>
+</div>
+<div class="divide-y-0">
+<!-- User Row -->
+<div class="px-8 py-5 flex items-center justify-between hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-4">
+<img alt="Erik Lindholm avatar" class="w-10 h-10 rounded-full object-cover" data-alt="Portrait of Erik Lindholm, male software engineer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCd3SF6ZeoflVofGA2o3gDSO3Be6hgo1Jz9lvHrLuijYIkiFWoBS76DFXrLCuWmSTJiHZ5RG28UlZ9k4A3l1GOa9RdOsWX0MJySVO3M6xFdeoODhfGD6t9ntsrlePfao_Pux6NfAwmfrLKelYS3rXTLFdd0XqWvP6yt3axyJbAz9QTWkIhwVgd47zWQSV72uF8W7N7lg2dLZoMiYB5loEIyqXN8uaQSZykp_y5WzcGpPZEH6nksbUrtbbii_zrzDMen8phMlaFa-DU"/>
+<div>
+<p class="text-sm font-bold text-primary">Erik Lindholm</p>
+<p class="text-xs text-on-surface-variant">Lead Developer • 1,240 pts</p>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-bold text-outline uppercase mb-1">Scoring</span>
+<label class="relative inline-flex items-center cursor-pointer scale-90">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<button class="text-slate-400 group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- User Row -->
+<div class="px-8 py-5 flex items-center justify-between hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-4">
+<img alt="Sarah Chen avatar" class="w-10 h-10 rounded-full object-cover" data-alt="Portrait of Sarah Chen, female product manager" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBEweP-ixBXz2AGiqihUeUCQIJqn9srqi5n6sXNcqUiiHwJIped6fRQzpa4BO8231eWW3wueOEBNYDYuQYIHoyKPOGzKFmaNA4twYFm44c7K_3zvguu19pAfHo6eeCUYV81ktemldnUCt9eUZcAIbE0-OWpg8B8B4OWAH7IkE34b8uOfi6lUphq1-LPo4Z9xfc0CEayeY0Ju-UuGKdyUzy5QiS5yVqUFKykR3-PhWkObB-BgiYuRXrZMzmNgh2idO4TuHHctAOW9A"/>
+<div>
+<p class="text-sm font-bold text-primary">Sarah Chen</p>
+<p class="text-xs text-on-surface-variant">Product Manager • 892 pts</p>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-bold text-outline uppercase mb-1">Scoring</span>
+<label class="relative inline-flex items-center cursor-pointer scale-90">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<button class="text-slate-400 group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- User Row -->
+<div class="px-8 py-5 flex items-center justify-between hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 text-xs">
+                                        MJ
+                                    </div>
+<div>
+<p class="text-sm font-bold text-primary">Marcus Jensen</p>
+<p class="text-xs text-on-surface-variant">QA Specialist • 450 pts</p>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-bold text-outline uppercase mb-1">Scoring</span>
+<label class="relative inline-flex items-center cursor-pointer scale-90">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<button class="text-slate-400 group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Group Item: Global Markets -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start opacity-75 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
+<div class="md:sticky md:top-32">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-14 h-14 bg-gradient-to-br from-secondary-container to-slate-400 rounded-2xl flex items-center justify-center text-on-secondary-fixed text-2xl font-bold shadow-md">
+                                G
+                            </div>
+<div>
+<h4 class="text-xl font-bold text-primary tracking-tight">Global Markets</h4>
+<span class="text-[10px] font-bold text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full uppercase">Paused</span>
+</div>
+</div>
+<p class="text-sm text-on-surface-variant mb-6 leading-relaxed">Economic discussions and market analysis. 120 contributors monitored.</p>
+<div class="bg-surface-container-low rounded-xl p-5">
+<div class="flex items-center justify-between mb-4">
+<span class="text-xs font-bold text-primary">Score Assignment</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-on-tertiary-container"></div>
+</label>
+</div>
+<p class="text-[11px] text-outline leading-tight">Scoring is currently disabled for this group. No points are being calculated.</p>
+</div>
+</div>
+<!-- Contributors Grid Asymmetric -->
+<div class="md:col-span-2 grid grid-cols-2 gap-4">
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-outline-variant transition-all">
+<div class="flex justify-between items-start mb-4">
+<img alt="Helena Ross avatar" class="w-12 h-12 rounded-xl object-cover" data-alt="Close up portrait of Helena Ross" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3esBKKgnAZe2bPnj9CTW7u3gan8FxptsujKIqmzqho124XDtudCwhbR7luiyJ5_2rnTxzcr9Fzqq_3BJPpLfn6K63nX4OHceXu6p7rcWGmKvkP7Nonj4tvpg0ChIRkKSnJLbUa0xF0CryU5ixYJ_0eK9QZ7DxHuxghgjcYsmhkrSYilX6PaXIUDLHtnR2jr3cOxhGw3AjCPdzvddVCr4ogSYzt_EvAe1efQWw3pdhDG5iqFm8YTuTit2urxwGC4QbDu7CnZE6fc0"/>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<p class="text-sm font-bold text-primary">Helena Ross</p>
+<p class="text-xs text-on-surface-variant">Market Analyst</p>
+<div class="mt-4 flex items-center justify-between">
+<span class="text-[10px] font-bold text-on-tertiary-container bg-on-tertiary-container/10 px-2 py-0.5 rounded-full">Top 5%</span>
+<span class="text-xs font-bold text-primary">2,140 pts</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-outline-variant transition-all">
+<div class="flex justify-between items-start mb-4">
+<img alt="David Varga avatar" class="w-12 h-12 rounded-xl object-cover" data-alt="Portrait of David Varga in office attire" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdfSwWHlTlBgB47oEEbg4pioC8ACxC2tZqdFpGc4yah8knRMhQ4dUGRD6xHb4tIN3XgYD4IXZWOZasL8TRJi7vbyeBIsMqVTclyv41TjFcRSPaLFTOp5ZQCyxtXmTWUHRf8tcRJfm7vc4bv2Q8jsG2jA8Pn0DddKtCHa4n3U6y03ttfl3aQfH54EvHGYlUwOYhvurnF4lv2-ZARyEo8S3Nq6pqb9vEJ5Dth8NwvomlN8QVwse8wFViYUBRZBgVHJBcoRSALLspQTo"/>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<p class="text-sm font-bold text-primary">David Varga</p>
+<p class="text-xs text-on-surface-variant">Macro Strategist</p>
+<div class="mt-4 flex items-center justify-between">
+<span class="text-[10px] font-bold text-outline bg-slate-100 px-2 py-0.5 rounded-full">Pro</span>
+<span class="text-xs font-bold text-primary">1,105 pts</span>
+</div>
+</div>
+<div class="col-span-2 bg-primary-container p-6 rounded-xl flex items-center justify-between text-white overflow-hidden relative">
+<div class="relative z-10">
+<p class="text-xs font-semibold opacity-70">Bulk Actions</p>
+<p class="text-lg font-bold">Synchronize 120 Market Users</p>
+</div>
+<button class="relative z-10 bg-white text-primary-container px-6 py-2 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors">
+                                Run Global Sync
+                            </button>
+<!-- Abstract decoration -->
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-on-primary-container/20 rounded-full blur-2xl"></div>
+<div class="absolute right-12 -top-8 w-16 h-16 bg-on-tertiary-container/20 rounded-full blur-xl"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB - Suppression Logic: Hidden on Detail Screens but shown here as it is a Management Hub -->
+<div class="fixed bottom-8 right-8 z-50">
+<button class="bg-primary-container text-white w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-2xl">add</span>
+</button>
+</div>
+</body></html>

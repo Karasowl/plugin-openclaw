@@ -10,6 +10,37 @@ import { createMessageSendingGateHandler } from "./hooks/message-sending-gate.js
 import { createToolGateHandler } from "./hooks/tool-gate.js";
 import { registerCreditTools } from "./tools/index.js";
 import { registerDashboardRoutes } from "./routes/dashboard-api.js";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+/**
+ * Auto-detect the gateway auth token by reading openclaw.json.
+ * This avoids requiring users to manually copy their token into plugin config.
+ */
+function detectGatewayToken(log?: { info: (msg: string) => void; warn: (msg: string) => void }): string {
+  // Try common locations for openclaw.json
+  const candidates = [
+    path.join(process.env.HOME || "", ".openclaw", "openclaw.json"),
+    path.join(process.env.USERPROFILE || "", ".openclaw", "openclaw.json"),
+  ];
+
+  for (const configPath of candidates) {
+    try {
+      const raw = fs.readFileSync(configPath, "utf-8");
+      const config = JSON.parse(raw);
+      const token = config?.gateway?.auth?.token;
+      if (typeof token === "string" && token.length > 0) {
+        log?.info(`[access-credits] Gateway token detected from ${configPath}`);
+        return token;
+      }
+    } catch {
+      // File not found or invalid — try next candidate
+    }
+  }
+
+  log?.warn("[access-credits] Could not auto-detect gateway token — dashboard will be inaccessible");
+  return "";
+}
 
 export default {
   id: "access-credits",
@@ -23,8 +54,10 @@ export default {
     const rawConfig = (api.pluginConfig ?? {}) as Record<string, unknown>;
     const log = api.logger;
 
+    // Auto-detect gateway token for dashboard auth
+    const gatewayToken = detectGatewayToken(log);
+
     // Persistent store — file-backed JSON via api.runtime.state.resolveStateDir().
-    // Falls back to in-memory Map only if resolveStateDir is somehow unavailable.
     const stateDir = api.runtime.state.resolveStateDir();
     let runtimeStore;
     if (stateDir) {
@@ -42,12 +75,12 @@ export default {
 
     const store = createCreditsStore(runtimeStore, () => configContainer.current.initialCredits);
 
-    // === LAYER 0: Internal hook (InternalHookEvent shape) ===
-    // message:received is an internal hook with sessionKey, context.from, etc.
-    api.registerHook("message:received", createMessageGateHandler(store, getConfig));
+    // === LAYER 0: Internal hook with name ===
+    api.registerHook("message:received", createMessageGateHandler(store, getConfig), {
+      name: "access-credits-message-gate"
+    });
 
-    // === LAYERS 1-4: Plugin lifecycle hooks (api.on with typed contracts) ===
-    // These use (event, ctx) => result contracts per OpenClaw's PluginHookHandlerMap.
+    // === LAYERS 1-4: Plugin lifecycle hooks ===
     api.on("before_prompt_build", createPromptInjectorHandler(store, getConfig));
     api.on("before_tool_call", createToolGateHandler(store, getConfig));
     api.on("message_sending", createMessageSendingGateHandler(store, getConfig));
@@ -63,6 +96,7 @@ export default {
       configContainer,
       rawConfig,
       runtimeStore,
+      gatewayToken,
     );
   },
 };

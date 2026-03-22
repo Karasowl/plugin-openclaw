@@ -1,4 +1,4 @@
-export const CLIENT_SCRIPT = `
+export const CLIENT_SCRIPT = String.raw`
 (function () {
   'use strict';
 
@@ -29,7 +29,10 @@ export const CLIENT_SCRIPT = `
     var opts = Object.assign(
       {
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (window.__AUTH_TOKEN__ || '')
+        },
       },
       options || {}
     );
@@ -578,7 +581,7 @@ export const CLIENT_SCRIPT = `
   function attachUsersTableEvents() {
     populateUserNames();
 
-    // Row click → toggle transactions
+    // Row click -> toggle transactions
     var rows = document.querySelectorAll('.user-row');
     rows.forEach(function (row) {
       row.addEventListener('click', function (e) {
@@ -772,7 +775,7 @@ export const CLIENT_SCRIPT = `
             '<h2 class="form-section-title">Administracion</h2>' +
             '<div class="form-group">' +
               '<label class="form-label" for="cfg-admins">Usuarios administradores <span class="form-hint">(uno por linea)</span></label>' +
-              '<textarea id="cfg-admins" name="adminUsers" class="form-textarea" rows="4" placeholder="user123\nuser456"></textarea>' +
+              '<textarea id="cfg-admins" name="adminUsers" class="form-textarea" rows="4" placeholder="user123, user456"></textarea>' +
             '</div>' +
             '<div class="form-group">' +
               '<label class="form-label" for="cfg-fallback">Modelo de fallback</label>' +

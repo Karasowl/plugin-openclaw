@@ -5,7 +5,10 @@
     "properties": {
       "mode": {
         "type": "string",
-        "enum": ["observe", "enforce"],
+        "enum": [
+          "observe",
+          "enforce"
+        ],
         "default": "enforce",
         "description": "observe: only log activity without blocking. enforce: full credit gate with blocking."
       },
@@ -21,21 +24,49 @@
       },
       "triggerHashtags": {
         "type": "array",
-        "items": { "type": "string" },
-        "default": ["#ask", "#bot"],
+        "items": {
+          "type": "string"
+        },
+        "default": [
+          "#ask",
+          "#bot"
+        ],
         "description": "Hashtags that trigger credit-gated bot interaction"
       },
       "triggerCommands": {
         "type": "array",
-        "items": { "type": "string" },
-        "default": ["/ask", "/bot"],
+        "items": {
+          "type": "string"
+        },
+        "default": [
+          "/ask",
+          "/bot"
+        ],
         "description": "Commands that trigger credit-gated bot interaction"
       },
       "adminUsers": {
         "type": "array",
-        "items": { "type": "string" },
+        "items": {
+          "type": "string"
+        },
         "default": [],
         "description": "User IDs that bypass credit checks and can manage credits"
+      },
+      "agentIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": [],
+        "description": "Agent IDs to apply credit system to. Empty array = all agents."
+      },
+      "chatTypes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": [],
+        "description": "Chat types to apply credit system to: 'group', 'direct'. Empty array = all."
       },
       "fallbackModel": {
         "type": "string",
