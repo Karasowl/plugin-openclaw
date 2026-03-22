@@ -109,11 +109,19 @@ function handleUsersRoute(
   store: CreditsStore,
 ): boolean {
   const url = new URL(req.url ?? "", "http://localhost");
-  const allUsers = store.getAllUsers();
+  let users = store.getAllUsers();
+  const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+  if (q) {
+    users = users.filter(
+      (u) =>
+        u.userId.toLowerCase().includes(q) ||
+        (u.displayName && u.displayName.toLowerCase().includes(q)),
+    );
+  }
   const offset = Math.max(0, parseInt(url.searchParams.get("offset") ?? "0", 10));
   const limit = Math.max(1, Math.min(200, parseInt(url.searchParams.get("limit") ?? "50", 10)));
-  const paginated = allUsers.slice(offset, offset + limit);
-  return json(res, 200, { users: paginated, total: allUsers.length });
+  const paginated = users.slice(offset, offset + limit);
+  return json(res, 200, { users: paginated, total: users.length });
 }
 
 export function registerDashboardRoutes(

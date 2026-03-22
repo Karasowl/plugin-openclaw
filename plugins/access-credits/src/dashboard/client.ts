@@ -9,7 +9,6 @@ export const CLIENT_SCRIPT = `
   var state = {
     currentTab: 'overview',
     users: [],
-    filteredUsers: [],
     stats: null,
     config: window.__INITIAL_CONFIG__ || {},
     pagination: { offset: 0, limit: 50, total: 0 },
@@ -431,8 +430,8 @@ export const CLIENT_SCRIPT = `
         clearTimeout(searchDebounceTimer);
         searchDebounceTimer = setTimeout(function () {
           state.searchQuery = e.target.value;
-          applySearchFilter();
-          refreshUsersTable();
+          state.pagination.offset = 0;
+          loadUsers();
         }, 300);
       });
     }
@@ -441,22 +440,8 @@ export const CLIENT_SCRIPT = `
     attachPaginationEvents();
   }
 
-  function applySearchFilter() {
-    var q = state.searchQuery.trim().toLowerCase();
-    if (!q) {
-      state.filteredUsers = state.users.slice();
-      return;
-    }
-    state.filteredUsers = state.users.filter(function (u) {
-      return (
-        (u.userId && u.userId.toLowerCase().indexOf(q) !== -1) ||
-        (u.displayName && u.displayName.toLowerCase().indexOf(q) !== -1)
-      );
-    });
-  }
-
   function buildUsersTableHtml() {
-    var users = state.filteredUsers;
+    var users = state.users;
 
     if (!users || users.length === 0) {
       return (
@@ -939,12 +924,14 @@ export const CLIENT_SCRIPT = `
     state.loading.users = true;
     var p = state.pagination;
     var path = '/users?offset=' + p.offset + '&limit=' + p.limit;
+    if (state.searchQuery) {
+      path += '&q=' + encodeURIComponent(state.searchQuery);
+    }
     return apiFetch(path)
       .then(function (data) {
         state.users = data.users || [];
         state.pagination.total = data.total || state.users.length;
         state.loading.users = false;
-        applySearchFilter();
         if (state.currentTab === 'users') renderUsers();
       })
       .catch(function (err) {
