@@ -92,23 +92,18 @@ export const CLIENT_SCRIPT = `
     if (!container) return;
 
     var toast = document.createElement('div');
-    toast.className = 'toast toast--' + (type || 'success');
+    toast.className = 'toast toast-' + (type || 'success');
 
     var icon = type === 'error' ? '&#x2716;' : '&#x2714;';
     toast.innerHTML =
-      '<span class="toast__icon">' + icon + '</span>' +
-      '<span class="toast__message"></span>';
+      '<span class="toast-icon">' + icon + '</span>' +
+      '<span class="toast-message"></span>';
 
-    toast.querySelector('.toast__message').textContent = message;
+    toast.querySelector('.toast-message').textContent = message;
     container.appendChild(toast);
 
-    // Trigger animation
-    requestAnimationFrame(function () {
-      toast.classList.add('toast--visible');
-    });
-
     setTimeout(function () {
-      toast.classList.remove('toast--visible');
+      toast.classList.add('dismissing');
       setTimeout(function () {
         if (toast.parentNode) toast.parentNode.removeChild(toast);
       }, 300);
@@ -127,14 +122,14 @@ export const CLIENT_SCRIPT = `
 
     modalConfirmCallback = onConfirm || null;
 
-    var titleEl = overlay.querySelector('.modal__title');
-    var bodyEl = overlay.querySelector('.modal__body');
+    var titleEl = overlay.querySelector('.modal-title');
+    var bodyEl = overlay.querySelector('.modal-body');
 
     if (titleEl) titleEl.textContent = title;
     if (bodyEl) bodyEl.innerHTML = bodyHtml;
 
     overlay.classList.remove('hidden');
-    overlay.classList.add('modal--open');
+    overlay.classList.add('open');
 
     // Focus first input
     var firstInput = overlay.querySelector('input, select, textarea');
@@ -145,7 +140,7 @@ export const CLIENT_SCRIPT = `
     var overlay = document.getElementById('modal-overlay');
     if (!overlay) return;
     overlay.classList.add('hidden');
-    overlay.classList.remove('modal--open');
+    overlay.classList.remove('open');
     modalConfirmCallback = null;
   }
 
@@ -157,14 +152,14 @@ export const CLIENT_SCRIPT = `
     if (!overlay.querySelector('.modal')) {
       overlay.innerHTML =
         '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">' +
-          '<div class="modal__header">' +
-            '<h2 class="modal__title" id="modal-title"></h2>' +
-            '<button class="modal__close" aria-label="Cerrar">&times;</button>' +
+          '<div class="modal-header">' +
+            '<h2 class="modal-title" id="modal-title"></h2>' +
+            '<button class="modal-close" aria-label="Cerrar">&times;</button>' +
           '</div>' +
-          '<div class="modal__body"></div>' +
-          '<div class="modal__footer">' +
-            '<button class="btn btn--secondary modal__cancel">Cancelar</button>' +
-            '<button class="btn btn--primary modal__confirm">Confirmar</button>' +
+          '<div class="modal-body"></div>' +
+          '<div class="modal-footer">' +
+            '<button class="btn btn-secondary modal-cancel">Cancelar</button>' +
+            '<button class="btn btn-primary modal-confirm">Confirmar</button>' +
           '</div>' +
         '</div>';
     }
@@ -173,13 +168,13 @@ export const CLIENT_SCRIPT = `
       if (e.target === overlay) hideModal();
     });
 
-    var closeBtn = overlay.querySelector('.modal__close');
+    var closeBtn = overlay.querySelector('.modal-close');
     if (closeBtn) closeBtn.addEventListener('click', hideModal);
 
-    var cancelBtn = overlay.querySelector('.modal__cancel');
+    var cancelBtn = overlay.querySelector('.modal-cancel');
     if (cancelBtn) cancelBtn.addEventListener('click', hideModal);
 
-    var confirmBtn = overlay.querySelector('.modal__confirm');
+    var confirmBtn = overlay.querySelector('.modal-confirm');
     if (confirmBtn) {
       confirmBtn.addEventListener('click', function () {
         if (typeof modalConfirmCallback === 'function') {
@@ -200,13 +195,13 @@ export const CLIENT_SCRIPT = `
   function openCreditModal(user) {
     var bodyHtml =
       '<div class="credit-modal">' +
-        '<div class="credit-modal__user">' +
-          '<span class="credit-modal__label">Usuario:</span>' +
-          '<span class="credit-modal__value credit-modal__userid"></span>' +
+        '<div class="credit-modal-info">' +
+          '<span class="credit-modal-label">Usuario:</span>' +
+          '<span class="credit-modal-value credit-modal-userid"></span>' +
         '</div>' +
-        '<div class="credit-modal__user">' +
-          '<span class="credit-modal__label">Balance actual:</span>' +
-          '<span class="credit-modal__value credit-modal__balance"></span>' +
+        '<div class="credit-modal-info">' +
+          '<span class="credit-modal-label">Balance actual:</span>' +
+          '<span class="credit-modal-value credit-modal-balance"></span>' +
         '</div>' +
         '<div class="form-group">' +
           '<label class="form-label">Accion</label>' +
@@ -249,7 +244,7 @@ export const CLIENT_SCRIPT = `
         reason = 'Ajuste manual';
       }
 
-      var confirmBtn = overlay.querySelector('.modal__confirm');
+      var confirmBtn = overlay.querySelector('.modal-confirm');
       if (confirmBtn) {
         confirmBtn.disabled = true;
         confirmBtn.textContent = 'Procesando...';
@@ -280,8 +275,8 @@ export const CLIENT_SCRIPT = `
     // Set user info after modal is shown (safe textContent assignment)
     var overlay = document.getElementById('modal-overlay');
     if (overlay) {
-      var useridEl = overlay.querySelector('.credit-modal__userid');
-      var balanceEl = overlay.querySelector('.credit-modal__balance');
+      var useridEl = overlay.querySelector('.credit-modal-userid');
+      var balanceEl = overlay.querySelector('.credit-modal-balance');
       setTextContent(useridEl, user.displayName || user.userId);
       setTextContent(balanceEl, formatNumber(user.credits) + ' creditos');
     }
@@ -304,8 +299,8 @@ export const CLIENT_SCRIPT = `
     var id = 'retry-btn-' + Date.now();
     return (
       '<div class="error-state">' +
-        '<p class="error-state__message"></p>' +
-        '<button class="btn btn--secondary" id="' + escapeHtml(id) + '">Reintentar</button>' +
+        '<p class="error-state-description"></p>' +
+        '<button class="btn btn-secondary" id="' + escapeHtml(id) + '">Reintentar</button>' +
       '</div>'
     );
   }
@@ -314,10 +309,10 @@ export const CLIENT_SCRIPT = `
     var container = document.getElementById(containerId);
     if (!container) return;
 
-    var msgEl = container.querySelector('.error-state__message');
+    var msgEl = container.querySelector('.error-state-description');
     if (msgEl) msgEl.textContent = message;
 
-    var btn = container.querySelector('.btn--secondary');
+    var btn = container.querySelector('.btn-secondary');
     if (btn) btn.addEventListener('click', retryFn);
   }
 
@@ -335,40 +330,40 @@ export const CLIENT_SCRIPT = `
 
     main.innerHTML =
       '<section class="tab-panel" id="tab-overview">' +
-        '<div class="stat-grid">' +
+        '<div class="stats-grid">' +
           '<div class="stat-card">' +
-            '<div class="stat-card__label">Usuarios totales</div>' +
-            '<div class="stat-card__value" id="stat-total-users">' + formatNumber(s.totalUsers) + '</div>' +
+            '<div class="stat-label">Usuarios totales</div>' +
+            '<div class="stat-value" id="stat-total-users">' + formatNumber(s.totalUsers) + '</div>' +
           '</div>' +
           '<div class="stat-card">' +
-            '<div class="stat-card__label">Creditos en circulacion</div>' +
-            '<div class="stat-card__value" id="stat-credits">' + formatNumber(s.totalCreditsInCirculation) + '</div>' +
+            '<div class="stat-label">Creditos en circulacion</div>' +
+            '<div class="stat-value" id="stat-credits">' + formatNumber(s.totalCreditsInCirculation) + '</div>' +
           '</div>' +
           '<div class="stat-card">' +
-            '<div class="stat-card__label">Transacciones totales</div>' +
-            '<div class="stat-card__value" id="stat-transactions">' + formatNumber(s.totalTransactions) + '</div>' +
+            '<div class="stat-label">Transacciones totales</div>' +
+            '<div class="stat-value" id="stat-transactions">' + formatNumber(s.totalTransactions) + '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="overview-meta">' +
-          '<div class="meta-row">' +
-            '<span class="meta-label">Modo actual:</span>' +
-            '<span class="badge badge--' + escapeHtml(cfg.mode === 'enforce' ? 'enforce' : 'observe') + '">' +
+        '<div class="info-list">' +
+          '<div class="info-list-item">' +
+            '<span class="info-list-label">Modo actual:</span>' +
+            '<span class="badge badge-' + escapeHtml(cfg.mode === 'enforce' ? 'enforce' : 'observe') + '">' +
               escapeHtml(cfg.mode || 'observe') +
             '</span>' +
           '</div>' +
-          '<div class="meta-row">' +
-            '<span class="meta-label">Estado del sistema:</span>' +
+          '<div class="info-list-item">' +
+            '<span class="info-list-label">Estado del sistema:</span>' +
             '<span class="health-status" id="health-status">' +
               (state.loading.overview
-                ? '<span class="health-status__dot health-status__dot--loading"></span>Verificando...'
+                ? '<span class="health-dot health-dot-loading"></span>Verificando...'
                 : renderHealthStatus(h)) +
             '</span>' +
           '</div>' +
           (h.version
-            ? '<div class="meta-row"><span class="meta-label">Version:</span><span class="meta-value" id="health-version"></span></div>'
+            ? '<div class="info-list-item"><span class="info-list-label">Version:</span><span class="info-list-value" id="health-version"></span></div>'
             : '') +
           (h.lastTransaction
-            ? '<div class="meta-row"><span class="meta-label">Ultima transaccion:</span><span class="meta-value">' + relativeTime(h.lastTransaction) + '</span></div>'
+            ? '<div class="info-list-item"><span class="info-list-label">Ultima transaccion:</span><span class="info-list-value">' + relativeTime(h.lastTransaction) + '</span></div>'
             : '') +
         '</div>' +
       '</section>';
@@ -382,12 +377,12 @@ export const CLIENT_SCRIPT = `
 
   function renderHealthStatus(h) {
     if (!h || !h.storeStatus) {
-      return '<span class="health-status__dot health-status__dot--unknown"></span>Desconocido';
+      return '<span class="health-dot health-dot-unknown"></span>Desconocido';
     }
     if (h.storeStatus === 'ok') {
-      return '<span class="health-status__dot health-status__dot--ok"></span>Operativo';
+      return '<span class="health-dot health-dot-ok"></span>Operativo';
     }
-    return '<span class="health-status__dot health-status__dot--error"></span>Error';
+    return '<span class="health-dot health-dot-error"></span>Error';
   }
 
   // ---------------------------------------------------------------------------
@@ -466,7 +461,7 @@ export const CLIENT_SCRIPT = `
     if (!users || users.length === 0) {
       return (
         '<div class="empty-state">' +
-          '<p class="empty-state__message">No hay usuarios registrados aun</p>' +
+          '<p class="empty-state-description">No hay usuarios registrados aun</p>' +
         '</div>'
       );
     }
@@ -482,12 +477,12 @@ export const CLIENT_SCRIPT = `
             '<span class="user-name"></span>' +
             '<span class="user-id"></span>' +
           '</td>' +
-          '<td class="td-balance td--number">' + formatNumber(u.credits) + '</td>' +
-          '<td class="td-earned td--number">' + formatNumber(u.totalEarned) + '</td>' +
-          '<td class="td-spent td--number">' + formatNumber(u.totalSpent) + '</td>' +
+          '<td class="td-balance td-number">' + formatNumber(u.credits) + '</td>' +
+          '<td class="td-earned td-number">' + formatNumber(u.totalEarned) + '</td>' +
+          '<td class="td-spent td-number">' + formatNumber(u.totalSpent) + '</td>' +
           '<td class="td-activity">' + relativeTime(u.lastActivity) + '</td>' +
           '<td class="td-actions">' +
-            '<button class="btn btn--sm btn--primary adjust-btn" data-userid="' + escapeHtml(u.userId) + '" aria-label="Ajustar creditos de usuario">Ajustar</button>' +
+            '<button class="btn btn-sm btn-primary adjust-btn" data-userid="' + escapeHtml(u.userId) + '" aria-label="Ajustar creditos de usuario">Ajustar</button>' +
           '</td>' +
         '</tr>' +
         (state.expandedRows[u.userId]
@@ -502,9 +497,9 @@ export const CLIENT_SCRIPT = `
           '<thead>' +
             '<tr>' +
               '<th scope="col">Usuario</th>' +
-              '<th scope="col" class="th--number">Balance</th>' +
-              '<th scope="col" class="th--number">Ganado</th>' +
-              '<th scope="col" class="th--number">Gastado</th>' +
+              '<th scope="col" class="th-number">Balance</th>' +
+              '<th scope="col" class="th-number">Ganado</th>' +
+              '<th scope="col" class="th-number">Gastado</th>' +
               '<th scope="col">Ultima Actividad</th>' +
               '<th scope="col">Acciones</th>' +
             '</tr>' +
@@ -522,7 +517,7 @@ export const CLIENT_SCRIPT = `
       return loadingHtml('Cargando transacciones...');
     }
     if (txData && txData.error) {
-      return '<div class="error-state"><p class="error-state__message"></p></div>';
+      return '<div class="error-state"><p class="error-state-description"></p></div>';
     }
     var transactions = txData && txData.transactions ? txData.transactions : [];
     if (transactions.length === 0) {
@@ -530,7 +525,7 @@ export const CLIENT_SCRIPT = `
     }
 
     var txRows = transactions.map(function (tx) {
-      var amountClass = tx.amount >= 0 ? 'tx-amount--positive' : 'tx-amount--negative';
+      var amountClass = tx.amount >= 0 ? 'tx-positive' : 'tx-negative';
       var amountStr = (tx.amount >= 0 ? '+' : '') + formatNumber(tx.amount);
       return (
         '<tr>' +
@@ -545,7 +540,7 @@ export const CLIENT_SCRIPT = `
 
     return (
       '<div class="transaction-panel">' +
-        '<h3 class="transaction-panel__title">Ultimas transacciones</h3>' +
+        '<h3 class="transaction-panel-title">Ultimas transacciones</h3>' +
         '<table class="tx-table">' +
           '<thead>' +
             '<tr>' +
@@ -585,7 +580,7 @@ export const CLIENT_SCRIPT = `
     });
 
     // Populate error messages in expanded transaction rows
-    var errorMsgs = document.querySelectorAll('.transaction-row .error-state__message');
+    var errorMsgs = document.querySelectorAll('.transaction-row .error-state-description');
     errorMsgs.forEach(function (el) {
       var parentRow = el.closest('.transaction-row');
       if (!parentRow) return;
@@ -675,16 +670,16 @@ export const CLIENT_SCRIPT = `
 
     return (
       '<div class="pagination" role="navigation" aria-label="Paginacion">' +
-        '<button class="btn btn--secondary pagination__prev" ' + (p.offset === 0 ? 'disabled' : '') + ' aria-label="Pagina anterior">Anterior</button>' +
-        '<span class="pagination__info">Pagina ' + currentPage + ' de ' + totalPages + '</span>' +
-        '<button class="btn btn--secondary pagination__next" ' + (p.offset + p.limit >= total ? 'disabled' : '') + ' aria-label="Pagina siguiente">Siguiente</button>' +
+        '<button class="btn btn-secondary pagination-prev" ' + (p.offset === 0 ? 'disabled' : '') + ' aria-label="Pagina anterior">Anterior</button>' +
+        '<span class="pagination-info">Pagina ' + currentPage + ' de ' + totalPages + '</span>' +
+        '<button class="btn btn-secondary pagination-next" ' + (p.offset + p.limit >= total ? 'disabled' : '') + ' aria-label="Pagina siguiente">Siguiente</button>' +
       '</div>'
     );
   }
 
   function attachPaginationEvents() {
-    var prevBtn = document.querySelector('.pagination__prev');
-    var nextBtn = document.querySelector('.pagination__next');
+    var prevBtn = document.querySelector('.pagination-prev');
+    var nextBtn = document.querySelector('.pagination-next');
 
     if (prevBtn) {
       prevBtn.addEventListener('click', function () {
@@ -728,7 +723,7 @@ export const CLIENT_SCRIPT = `
       '<section class="tab-panel" id="tab-config">' +
         '<form class="config-form" id="config-form" novalidate>' +
           '<div class="config-section">' +
-            '<h2 class="config-section__title">Modo de operacion</h2>' +
+            '<h2 class="form-section-title">Modo de operacion</h2>' +
             '<div class="form-group">' +
               '<label class="form-label" for="cfg-mode">Modo</label>' +
               '<select id="cfg-mode" name="mode" class="form-select">' +
@@ -739,7 +734,7 @@ export const CLIENT_SCRIPT = `
           '</div>' +
 
           '<div class="config-section">' +
-            '<h2 class="config-section__title">Creditos</h2>' +
+            '<h2 class="form-section-title">Creditos</h2>' +
             '<div class="form-row">' +
               '<div class="form-group">' +
                 '<label class="form-label" for="cfg-initial">Creditos iniciales</label>' +
@@ -757,9 +752,9 @@ export const CLIENT_SCRIPT = `
           '</div>' +
 
           '<div class="config-section">' +
-            '<h2 class="config-section__title">Contribuciones</h2>' +
-            '<div class="form-group form-group--checkbox">' +
-              '<label class="checkbox-label">' +
+            '<h2 class="form-section-title">Contribuciones</h2>' +
+            '<div class="form-group form-checkbox-group">' +
+              '<label class="form-checkbox-label">' +
                 '<input type="checkbox" id="cfg-eval" name="evaluateContributions" ' + (cfg.evaluateContributions ? 'checked' : '') + '>' +
                 '<span>Evaluar contribuciones</span>' +
               '</label>' +
@@ -777,7 +772,7 @@ export const CLIENT_SCRIPT = `
           '</div>' +
 
           '<div class="config-section">' +
-            '<h2 class="config-section__title">Activacion</h2>' +
+            '<h2 class="form-section-title">Activacion</h2>' +
             '<div class="form-group">' +
               '<label class="form-label" for="cfg-hashtags">Hashtags de activacion <span class="form-hint">(separados por coma)</span></label>' +
               '<input type="text" id="cfg-hashtags" name="triggerHashtags" class="form-input" placeholder="#ask, #bot" value="' + escapeHtml((cfg.triggerHashtags || []).join(', ')) + '">' +
@@ -789,7 +784,7 @@ export const CLIENT_SCRIPT = `
           '</div>' +
 
           '<div class="config-section">' +
-            '<h2 class="config-section__title">Administracion</h2>' +
+            '<h2 class="form-section-title">Administracion</h2>' +
             '<div class="form-group">' +
               '<label class="form-label" for="cfg-admins">Usuarios administradores <span class="form-hint">(uno por linea)</span></label>' +
               '<textarea id="cfg-admins" name="adminUsers" class="form-textarea" rows="4" placeholder="user123\nuser456"></textarea>' +
@@ -802,7 +797,7 @@ export const CLIENT_SCRIPT = `
 
           '<div class="form-actions">' +
             '<p class="form-note">Los cambios aplican al proximo mensaje</p>' +
-            '<button type="submit" class="btn btn--primary btn--lg" id="save-config-btn">Guardar</button>' +
+            '<button type="submit" class="btn btn-primary btn-lg" id="save-config-btn">Guardar</button>' +
           '</div>' +
         '</form>' +
       '</section>';
@@ -904,7 +899,7 @@ export const CLIENT_SCRIPT = `
     var navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(function (item) {
       var isActive = item.getAttribute('data-tab') === tab;
-      item.classList.toggle('nav-item--active', isActive);
+      item.classList.toggle('active', isActive);
       item.setAttribute('aria-selected', String(isActive));
     });
 
@@ -961,11 +956,11 @@ export const CLIENT_SCRIPT = `
             main.innerHTML =
               '<section class="tab-panel" id="tab-users">' +
                 '<div class="error-state" id="users-error">' +
-                  '<p class="error-state__message"></p>' +
-                  '<button class="btn btn--secondary" id="users-retry">Reintentar</button>' +
+                  '<p class="error-state-description"></p>' +
+                  '<button class="btn btn-secondary" id="users-retry">Reintentar</button>' +
                 '</div>' +
               '</section>';
-            setTextContent(document.querySelector('#users-error .error-state__message'), err.message || 'Error al cargar usuarios');
+            setTextContent(document.querySelector('#users-error .error-state-description'), err.message || 'Error al cargar usuarios');
             var retryBtn = document.getElementById('users-retry');
             if (retryBtn) retryBtn.addEventListener('click', loadUsers);
           }
@@ -977,7 +972,7 @@ export const CLIENT_SCRIPT = `
     state.loading.config = true;
     return apiFetch('/config')
       .then(function (data) {
-        state.config = data;
+        state.config = data.config || data;
         state.loading.config = false;
         if (state.currentTab === 'config') renderConfig();
       })
@@ -990,11 +985,11 @@ export const CLIENT_SCRIPT = `
             main.innerHTML =
               '<section class="tab-panel" id="tab-config">' +
                 '<div class="error-state" id="config-error">' +
-                  '<p class="error-state__message"></p>' +
-                  '<button class="btn btn--secondary" id="config-retry">Reintentar</button>' +
+                  '<p class="error-state-description"></p>' +
+                  '<button class="btn btn-secondary" id="config-retry">Reintentar</button>' +
                 '</div>' +
               '</section>';
-            setTextContent(document.querySelector('#config-error .error-state__message'), err.message || 'Error al cargar configuracion');
+            setTextContent(document.querySelector('#config-error .error-state-description'), err.message || 'Error al cargar configuracion');
             var retryBtn = document.getElementById('config-retry');
             if (retryBtn) retryBtn.addEventListener('click', function () { loadConfig().then(renderConfig); });
           }

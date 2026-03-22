@@ -1897,4 +1897,167 @@ code {
     padding: 0;
   }
 }
+
+/* ── 27. DASHBOARD-SPECIFIC ADDITIONS ─────────────────────── */
+
+/* Utility: hidden */
+.hidden { display: none !important; }
+
+/* User cell layout (stack name + id) */
+.td-user {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Buttons: secondary + lg variants */
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+  background: var(--bg);
+  border-color: var(--text-secondary);
+}
+.btn-lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--font-size-md);
+}
+
+/* Config form layout */
+.config-section {
+  margin-bottom: var(--space-6);
+}
+.config-section:last-child {
+  margin-bottom: 0;
+}
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-6);
+}
+.form-note {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Health status dot indicators */
+.health-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.health-dot-ok      { background: var(--success); }
+.health-dot-error   { background: var(--danger); }
+.health-dot-loading { background: var(--text-secondary); animation: spin 1.5s linear infinite; }
+.health-dot-unknown { background: var(--text-secondary); opacity: .5; }
+
+/* Radio groups */
+.radio-group {
+  display: flex;
+  gap: var(--space-4);
+}
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+}
+
+/* Credit adjustment modal */
+.credit-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.credit-modal-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.credit-modal-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.credit-modal-value {
+  font-weight: 600;
+}
+
+/* Transaction panel (inline expandable rows) */
+.transaction-panel {
+  padding: var(--space-4);
+}
+.transaction-panel-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}
+
+/* Transaction table */
+.tx-table {
+  width: 100%;
+  font-size: var(--font-size-sm);
+  border-collapse: collapse;
+}
+.tx-table th,
+.tx-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+}
+.tx-table thead {
+  background: var(--bg);
+}
+.tx-table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.tx-positive { color: var(--success); font-weight: 600; }
+.tx-negative { color: var(--danger); font-weight: 600; }
+
+/* Users toolbar */
+.users-toolbar {
+  margin-bottom: var(--space-4);
+}
+
+/* Table numeric alignment */
+.th-number,
+.td-number {
+  text-align: right;
+}
+
+/* User row interactivity */
+.user-row {
+  cursor: pointer;
+}
+.user-row:hover {
+  background: var(--bg);
+}
+
+/* Pagination prev/next (used as selectors) */
+.pagination-prev,
+.pagination-next {
+  /* styled via .btn-secondary */
+}
+
+/* Modal cancel/confirm (styled via .btn) */
+.modal-cancel,
+.modal-confirm {
+  /* styled via .btn .btn-primary / .btn-secondary */
+}
 `;
