@@ -5,6 +5,7 @@ import { createModelGateHandler } from "../src/hooks/model-gate.js";
 import { createPromptInjectorHandler } from "../src/hooks/prompt-inject.js";
 import { createMessageSendingGateHandler } from "../src/hooks/message-sending-gate.js";
 import { createToolGateHandler } from "../src/hooks/tool-gate.js";
+import { markSessionTriggered, markSessionDenied, clearSession, isSessionTriggered, isSessionDenied } from "../src/gate-state.js";
 import type { AccessCreditsConfig } from "../src/config.js";
 
 function createMockRuntimeStore() {
@@ -124,16 +125,40 @@ describe("MessageGateHandler", () => {
     expect(event.messages).toHaveLength(0);
   });
 
-  it("enforces cooldown", async () => {
+  it("allows first query even with cooldown enabled", async () => {
     const cooldownConfig = { ...baseConfig, cooldownSeconds: 60 };
     const cooldownHandler = createMessageGateHandler(store, cooldownConfig);
-    store.getOrCreateUser("user-1");
-    store.recordInteraction("user-1");
+    const uid = "cooldown-user-1";
+    store.getOrCreateUser(uid);
 
-    const event = createMessageEvent();
+    const event = createMessageEvent({
+      context: { content: "#ask test", from: uid, metadata: { senderId: uid } },
+    });
     await cooldownHandler(event);
-    expect(event.messages).toHaveLength(1);
-    expect(event.messages[0]).toContain("Espera");
+    expect(event.messages).toHaveLength(0);
+  });
+
+  it("enforces cooldown on second query", async () => {
+    const cooldownConfig = { ...baseConfig, cooldownSeconds: 60 };
+    const cooldownHandler = createMessageGateHandler(store, cooldownConfig);
+    const uid = "cooldown-user-2";
+    store.getOrCreateUser(uid);
+
+    // First query passes and records interaction
+    const event1 = createMessageEvent({
+      context: { content: "#ask first", from: uid, metadata: { senderId: uid } },
+    });
+    await cooldownHandler(event1);
+    expect(event1.messages).toHaveLength(0);
+
+    // Second query is blocked by cooldown
+    const event2 = createMessageEvent({
+      sessionKey: "test-session-2",
+      context: { content: "#ask second", from: uid, metadata: { senderId: uid } },
+    });
+    await cooldownHandler(event2);
+    expect(event2.messages).toHaveLength(1);
+    expect(event2.messages[0]).toContain("Espera");
   });
 });
 
@@ -144,9 +169,10 @@ describe("ModelGateHandler", () => {
   beforeEach(() => {
     store = createCreditsStore(createMockRuntimeStore(), 10);
     handler = createModelGateHandler(store, baseConfig);
+    clearSession("test");
   });
 
-  it("returns undefined when user has credits", () => {
+  it("returns undefined when session is not triggered", () => {
     store.getOrCreateUser("user-1");
     const result = handler({
       type: "model", action: "resolve", sessionKey: "test",
@@ -155,22 +181,25 @@ describe("ModelGateHandler", () => {
     expect(result).toBeUndefined();
   });
 
-  it("returns fallback model when user has no credits", () => {
+  it("returns undefined when session is triggered but not denied", () => {
+    store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
+    const result = handler({
+      type: "model", action: "resolve", sessionKey: "test",
+      context: { senderId: "user-1" },
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("returns fallback model when session is triggered and denied", () => {
     drainCredits(store, "user-1");
+    markSessionTriggered("test");
+    markSessionDenied("test", "no_credits");
     const result = handler({
       type: "model", action: "resolve", sessionKey: "test",
       context: { senderId: "user-1" },
     });
     expect(result).toEqual({ model: "cheapest" });
-  });
-
-  it("bypasses for admin users", () => {
-    drainCredits(store, "admin-1");
-    const result = handler({
-      type: "model", action: "resolve", sessionKey: "test",
-      context: { senderId: "admin-1" },
-    });
-    expect(result).toBeUndefined();
   });
 });
 
@@ -181,10 +210,12 @@ describe("PromptInjectorHandler", () => {
   beforeEach(() => {
     store = createCreditsStore(createMockRuntimeStore(), 10);
     handler = createPromptInjectorHandler(store, baseConfig);
+    clearSession("test");
   });
 
-  it("injects credit info when user has credits", () => {
+  it("injects credit info when session is triggered and user has credits", () => {
     store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
     let injected = "";
     handler({
       type: "agent", action: "prompt_build", sessionKey: "test",
@@ -195,11 +226,14 @@ describe("PromptInjectorHandler", () => {
       },
     });
     expect(injected).toContain("has 10 credits");
-    expect(injected).toContain("access_credits_deduct");
+    expect(injected).toContain("deducted automatically");
+    expect(injected).not.toContain("access_credits_deduct");
   });
 
-  it("injects block instruction when user has no credits", () => {
+  it("injects block instruction when session is triggered and denied", () => {
     drainCredits(store, "user-1");
+    markSessionTriggered("test");
+    markSessionDenied("test", "no_credits");
     let injected = "";
     handler({
       type: "agent", action: "prompt_build", sessionKey: "test",
@@ -212,8 +246,40 @@ describe("PromptInjectorHandler", () => {
     expect(injected).toContain("0 credits");
   });
 
+  it("injects cooldown instruction when denied for cooldown", () => {
+    store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
+    markSessionDenied("test", "cooldown");
+    let injected = "";
+    handler({
+      type: "agent", action: "prompt_build", sessionKey: "test",
+      context: {
+        senderId: "user-1",
+        appendSystemContext: (text: string) => { injected = text; },
+      },
+    });
+    expect(injected).toContain("cooldown");
+    expect(injected).toContain("DO NOT process");
+    expect(injected).not.toContain("credits");
+  });
+
+  it("does nothing when session is not triggered", () => {
+    store.getOrCreateUser("user-1");
+    let injected = "";
+    handler({
+      type: "agent", action: "prompt_build", sessionKey: "test",
+      context: {
+        senderId: "user-1",
+        content: "x".repeat(150),
+        appendSystemContext: (text: string) => { injected = text; },
+      },
+    });
+    expect(injected).toBe("");
+  });
+
   it("only evaluates contributions for messages above minLength", () => {
     store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
     let injected = "";
     // Short message: no contribution evaluation
     handler({
@@ -242,6 +308,7 @@ describe("PromptInjectorHandler", () => {
   it("skips injection in observe mode", () => {
     const observeHandler = createPromptInjectorHandler(store, observeConfig);
     store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
     let injected = "";
     observeHandler({
       type: "agent", action: "prompt_build", sessionKey: "test",
@@ -256,6 +323,8 @@ describe("PromptInjectorHandler", () => {
   it("bypasses admin users", () => {
     store.getOrCreateUser("admin-1");
     drainCredits(store, "admin-1");
+    markSessionTriggered("test");
+    markSessionDenied("test", "no_credits");
     let injected = "";
     handler({
       type: "agent", action: "prompt_build", sessionKey: "test",
@@ -275,9 +344,10 @@ describe("ToolGateHandler", () => {
   beforeEach(() => {
     store = createCreditsStore(createMockRuntimeStore(), 10);
     handler = createToolGateHandler(store, baseConfig);
+    clearSession("test");
   });
 
-  it("allows tool calls when user has credits", () => {
+  it("allows tool calls when session is not triggered", () => {
     store.getOrCreateUser("user-1");
     let blocked = false;
     handler({
@@ -291,8 +361,25 @@ describe("ToolGateHandler", () => {
     expect(blocked).toBe(false);
   });
 
-  it("blocks tool calls when user has no credits", () => {
+  it("allows tool calls when session is triggered but not denied", () => {
+    store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
+    let blocked = false;
+    handler({
+      type: "tool", action: "call", sessionKey: "test",
+      context: {
+        senderId: "user-1",
+        toolName: "some_tool",
+        block: () => { blocked = true; },
+      },
+    });
+    expect(blocked).toBe(false);
+  });
+
+  it("blocks tool calls when session is triggered and denied", () => {
     drainCredits(store, "user-1");
+    markSessionTriggered("test");
+    markSessionDenied("test", "no_credits");
     let blocked = false;
     handler({
       type: "tool", action: "call", sessionKey: "test",
@@ -305,28 +392,16 @@ describe("ToolGateHandler", () => {
     expect(blocked).toBe(true);
   });
 
-  it("always allows access-credits own tools", () => {
+  it("always allows access-credits own tools even when denied", () => {
     drainCredits(store, "user-1");
+    markSessionTriggered("test");
+    markSessionDenied("test", "no_credits");
     let blocked = false;
     handler({
       type: "tool", action: "call", sessionKey: "test",
       context: {
         senderId: "user-1",
         toolName: "access_credits_check_balance",
-        block: () => { blocked = true; },
-      },
-    });
-    expect(blocked).toBe(false);
-  });
-
-  it("bypasses admin users", () => {
-    drainCredits(store, "admin-1");
-    let blocked = false;
-    handler({
-      type: "tool", action: "call", sessionKey: "test",
-      context: {
-        senderId: "admin-1",
-        toolName: "some_tool",
         block: () => { blocked = true; },
       },
     });
@@ -341,9 +416,10 @@ describe("MessageSendingGateHandler", () => {
   beforeEach(() => {
     store = createCreditsStore(createMockRuntimeStore(), 10);
     handler = createMessageSendingGateHandler(store, baseConfig);
+    clearSession("test");
   });
 
-  it("does not modify when user has credits", () => {
+  it("does nothing when session is not triggered", () => {
     store.getOrCreateUser("user-1");
     let replaced = false;
     let cancelled = false;
@@ -360,8 +436,26 @@ describe("MessageSendingGateHandler", () => {
     expect(cancelled).toBe(false);
   });
 
-  it("replaces content when user has no credits", () => {
+  it("auto-deducts credits when session is triggered and allowed", () => {
+    store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
+    handler({
+      type: "message", action: "sending", sessionKey: "test",
+      context: {
+        senderId: "user-1",
+        content: "bot response",
+        replaceContent: () => {},
+        cancel: () => {},
+      },
+    });
+    const user = store.getUser("user-1")!;
+    expect(user.credits).toBe(9); // 10 - 1 auto-deducted
+  });
+
+  it("replaces content when session is triggered and denied", () => {
     drainCredits(store, "user-1");
+    markSessionTriggered("test");
+    markSessionDenied("test", "no_credits");
     let replacedWith = "";
     handler({
       type: "message", action: "sending", sessionKey: "test",
@@ -375,18 +469,100 @@ describe("MessageSendingGateHandler", () => {
     expect(replacedWith).toContain("créditos suficientes");
   });
 
-  it("bypasses admin users", () => {
-    drainCredits(store, "admin-1");
-    let replaced = false;
+  it("shows cooldown message when denied for cooldown", () => {
+    store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
+    markSessionDenied("test", "cooldown");
+    let replacedWith = "";
+    handler({
+      type: "message", action: "sending", sessionKey: "test",
+      context: {
+        senderId: "user-1",
+        content: "bot response",
+        replaceContent: (c: string) => { replacedWith = c; },
+        cancel: () => {},
+      },
+    });
+    expect(replacedWith).toContain("Espera");
+    expect(replacedWith).not.toContain("créditos");
+  });
+
+  it("does not deduct for admin users", () => {
+    store.getOrCreateUser("admin-1");
+    markSessionTriggered("test");
     handler({
       type: "message", action: "sending", sessionKey: "test",
       context: {
         senderId: "admin-1",
         content: "bot response",
+        replaceContent: () => {},
+        cancel: () => {},
+      },
+    });
+    const user = store.getUser("admin-1")!;
+    expect(user.credits).toBe(10); // unchanged
+  });
+
+  it("blocks response when race condition exhausts credits", () => {
+    store.getOrCreateUser("user-1");
+    // Drain credits to simulate race: admission passed but credits gone
+    drainCredits(store, "user-1");
+    markSessionTriggered("test");
+    // NOT marked denied - message-gate admitted this session
+    let replacedWith = "";
+    handler({
+      type: "message", action: "sending", sessionKey: "test",
+      context: {
+        senderId: "user-1",
+        content: "bot response",
+        replaceContent: (c: string) => { replacedWith = c; },
+        cancel: () => {},
+      },
+    });
+    expect(replacedWith).toContain("créditos suficientes");
+  });
+
+  it("clears session state after handling", () => {
+    store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
+    handler({
+      type: "message", action: "sending", sessionKey: "test",
+      context: {
+        senderId: "user-1",
+        content: "bot response",
+        replaceContent: () => {},
+        cancel: () => {},
+      },
+    });
+    // Session should be cleared after handling
+    // A second call should do nothing (not triggered anymore)
+    let replaced = false;
+    markSessionDenied("test", "no_credits"); // try to mark denied after clear
+    handler({
+      type: "message", action: "sending", sessionKey: "test",
+      context: {
+        senderId: "user-1",
+        content: "bot response",
         replaceContent: () => { replaced = true; },
         cancel: () => {},
       },
     });
+    // Not triggered, so should not replace
     expect(replaced).toBe(false);
+  });
+});
+
+describe("GateState sessionKey reuse", () => {
+  it("does not carry stale denial when sessionKey is reused", () => {
+    // Simulate a denied session that was never cleaned up
+    markSessionTriggered("reuse-key");
+    markSessionDenied("reuse-key", "no_credits");
+    // Normally message-sending-gate would clearSession, but imagine it never fires
+
+    // Now a new interaction reuses the same sessionKey
+    markSessionTriggered("reuse-key");
+    // The old denial should have been cleared by markSessionTriggered
+    expect(isSessionTriggered("reuse-key")).toBe(true);
+    expect(isSessionDenied("reuse-key")).toBe(false);
   });
 });

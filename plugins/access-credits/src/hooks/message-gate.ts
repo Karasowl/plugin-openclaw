@@ -1,5 +1,6 @@
 import type { CreditsStore } from "../store/credits-store.js";
 import type { AccessCreditsConfig } from "../config.js";
+import { markSessionDenied, markSessionTriggered } from "../gate-state.js";
 
 interface MessageEvent {
   type: string;
@@ -50,6 +51,9 @@ export function createMessageGateHandler(store: CreditsStore, config: AccessCred
 
     if (!matchesTrigger(content, config)) return;
 
+    // This message matches a trigger - mark the session so hard gates know to act
+    markSessionTriggered(event.sessionKey);
+
     const senderId = extractSenderId(event);
     if (!senderId) return;
 
@@ -58,21 +62,25 @@ export function createMessageGateHandler(store: CreditsStore, config: AccessCred
     const senderName = event.context.metadata?.senderName ?? event.context.metadata?.senderUsername;
     const user = store.getOrCreateUser(senderId, senderName);
 
-    // In observe mode, just log the interaction without blocking
-    if (config.mode === "observe") {
-      store.recordInteraction(senderId);
+    // Cooldown check BEFORE recording interaction (both modes)
+    if (store.isOnCooldown(senderId, config.cooldownSeconds)) {
+      if (config.mode === "enforce") {
+        markSessionDenied(event.sessionKey, "cooldown");
+        event.messages.push(
+          `⏳ Espera un momento antes de enviar otra consulta al bot.`,
+        );
+      }
       return;
     }
 
-    // Cooldown check (hard gate, independent of LLM)
-    if (store.isOnCooldown(senderId, config.cooldownSeconds)) {
-      event.messages.push(
-        `⏳ Espera un momento antes de enviar otra consulta al bot.`,
-      );
-      return;
-    }
+    // Record interaction only after passing cooldown check
+    store.recordInteraction(senderId);
+
+    // In observe mode, just log the interaction without blocking
+    if (config.mode === "observe") return;
 
     if (user.credits < config.costPerMessage) {
+      markSessionDenied(event.sessionKey, "no_credits");
       event.messages.push(
         `⛔ No tienes créditos suficientes. Tu balance: ${user.credits}. Necesitas ${config.costPerMessage} para interactuar con el bot.`,
       );

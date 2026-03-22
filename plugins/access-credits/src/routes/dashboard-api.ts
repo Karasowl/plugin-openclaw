@@ -85,7 +85,13 @@ export function registerDashboardRoutes(
       }
 
       if (req.method === "POST") {
-        const body = await parseBody(req);
+        let body: Record<string, unknown>;
+        try {
+          body = await parseBody(req);
+        } catch {
+          return json(res, 400, { error: "Invalid JSON body" });
+        }
+
         const amount = body.amount as number;
         const reason = (body.reason as string) ?? "Admin adjustment";
         const action = body.action as string;
@@ -98,8 +104,13 @@ export function registerDashboardRoutes(
           const result = store.addCredits(userId, amount, reason, "admin_add");
           return json(res, 200, { success: true, balance: result.balance });
         } else if (action === "remove") {
-          const result = store.deductCredits(userId, amount, reason);
-          return json(res, 200, { success: result.success, balance: result.balance });
+          if (amount > user.credits) {
+            return json(res, 400, {
+              error: `Cannot remove ${amount} credits. User only has ${user.credits}.`,
+            });
+          }
+          const result = store.addCredits(userId, -amount, reason, "admin_remove");
+          return json(res, 200, { success: true, balance: result.balance });
         }
 
         return json(res, 400, { error: "action must be 'add' or 'remove'" });

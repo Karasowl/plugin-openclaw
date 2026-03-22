@@ -1,5 +1,6 @@
 import type { CreditsStore } from "../store/credits-store.js";
 import type { AccessCreditsConfig } from "../config.js";
+import { isSessionTriggered, isSessionDenied, getDenialReason } from "../gate-state.js";
 
 interface PromptBuildEvent {
   type: string;
@@ -18,8 +19,10 @@ export function createPromptInjectorHandler(
   config: AccessCreditsConfig,
 ) {
   return (event: PromptBuildEvent): void => {
-    // In observe mode, skip prompt injection entirely
     if (config.mode === "observe") return;
+
+    // Only act on sessions that were triggered by a gated message
+    if (!isSessionTriggered(event.sessionKey)) return;
 
     const senderId = event.context.senderId ?? event.context.from;
     if (!senderId) return;
@@ -29,23 +32,36 @@ export function createPromptInjectorHandler(
 
     if (config.adminUsers.includes(senderId)) return;
 
-    const user = store.getUser(senderId);
+    // If session was denied, inject block instruction with correct reason
+    if (isSessionDenied(event.sessionKey)) {
+      const reason = getDenialReason(event.sessionKey);
 
-    if (!user || user.credits < config.costPerMessage) {
-      const balance = user?.credits ?? 0;
-      append(
-        `[ACCESS-CREDITS] User "${senderId}" has ${balance} credits. ` +
-        `They need ${config.costPerMessage} credits to interact. ` +
-        `DO NOT process their request. Reply ONLY with a brief message ` +
-        `telling them they don't have enough credits and their current balance is ${balance}.`,
-      );
+      if (reason === "cooldown") {
+        append(
+          `[ACCESS-CREDITS] User "${senderId}" is on cooldown. ` +
+          `DO NOT process their request. Reply ONLY with a brief message ` +
+          `telling them to wait a moment before sending another query.`,
+        );
+      } else {
+        const user = store.getUser(senderId);
+        const balance = user?.credits ?? 0;
+        append(
+          `[ACCESS-CREDITS] User "${senderId}" has ${balance} credits. ` +
+          `They need ${config.costPerMessage} credits to interact. ` +
+          `DO NOT process their request. Reply ONLY with a brief message ` +
+          `telling them they don't have enough credits and their current balance is ${balance}.`,
+        );
+      }
       return;
     }
 
+    // User has credits - inject context (deduction is handled automatically by the runtime)
+    const user = store.getUser(senderId);
+    if (!user) return;
+
     const lines = [
       `[ACCESS-CREDITS] User "${senderId}" has ${user.credits} credits.`,
-      `Each interaction costs ${config.costPerMessage} credit(s).`,
-      `After responding, use the "access_credits_deduct" tool to deduct ${config.costPerMessage} credit(s) from user "${senderId}".`,
+      `Each interaction costs ${config.costPerMessage} credit(s). Credits are deducted automatically.`,
     ];
 
     if (config.evaluateContributions) {

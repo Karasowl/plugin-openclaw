@@ -1,5 +1,6 @@
 import type { CreditsStore } from "../store/credits-store.js";
 import type { AccessCreditsConfig } from "../config.js";
+import { isSessionDenied, isSessionTriggered } from "../gate-state.js";
 
 interface ToolCallEvent {
   type: string;
@@ -13,7 +14,7 @@ interface ToolCallEvent {
   };
 }
 
-// Tools that the access-credits plugin itself registers (these should always be allowed)
+// Tools that the access-credits plugin itself registers (always allowed)
 const SELF_TOOLS = new Set([
   "access_credits_check_balance",
   "access_credits_deduct",
@@ -22,24 +23,19 @@ const SELF_TOOLS = new Set([
 
 /**
  * HARD GATE - Layer 2
- * Block ALL tool calls if the user has no credits.
- * This prevents the agent from doing anything useful when the user shouldn't have access.
- * Exception: our own credit management tools are always allowed.
+ * Block ALL tool calls if the session was triggered AND denied.
+ * Only acts on gated messages, not normal group chat.
  */
 export function createToolGateHandler(
-  store: CreditsStore,
-  config: AccessCreditsConfig,
+  _store: CreditsStore,
+  _config: AccessCreditsConfig,
 ) {
   return (event: ToolCallEvent): void => {
     const toolName = event.context.toolName;
     if (toolName && SELF_TOOLS.has(toolName)) return;
 
-    const senderId = event.context.senderId ?? event.context.from;
-    if (!senderId) return;
-
-    if (config.adminUsers.includes(senderId)) return;
-
-    if (store.hasEnoughCredits(senderId, config.costPerMessage)) return;
+    // Only block if this session was triggered by a gated message AND denied
+    if (!isSessionTriggered(event.sessionKey) || !isSessionDenied(event.sessionKey)) return;
 
     if (event.context.block) {
       event.context.block(

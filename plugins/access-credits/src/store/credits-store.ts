@@ -144,15 +144,24 @@ export function createCreditsStore(
       const data = getData();
       const user = data.users[userId];
 
+      const previousCredits = user.credits;
       user.credits += amount;
-      user.totalEarned += amount;
+      // Floor at zero to prevent negative balances
+      if (user.credits < 0) user.credits = 0;
+      // Compute actual delta for consistent accounting
+      const actualDelta = user.credits - previousCredits;
+      if (actualDelta >= 0) {
+        user.totalEarned += actualDelta;
+      } else {
+        user.totalSpent += Math.abs(actualDelta);
+      }
       user.lastActivity = new Date().toISOString();
 
       const tx: Transaction = {
         id: generateId(),
         userId,
         type,
-        amount,
+        amount: actualDelta,
         balance: user.credits,
         reason,
         timestamp: user.lastActivity,

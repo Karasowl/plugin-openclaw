@@ -127,6 +127,32 @@ describe("CreditsStore", () => {
       expect(rewardTx).toBeDefined();
       expect(rewardTx!.amount).toBe(5);
     });
+
+    it("handles negative amount correctly for admin_remove", () => {
+      store.getOrCreateUser("user-1");
+      const result = store.addCredits("user-1", -3, "Admin removal", "admin_remove");
+      expect(result.success).toBe(true);
+      expect(result.balance).toBe(7); // 10 - 3
+      const user = store.getUser("user-1")!;
+      expect(user.totalEarned).toBe(10); // unchanged
+      expect(user.totalSpent).toBe(3);   // tracks removal
+    });
+
+    it("floors balance at zero with consistent accounting", () => {
+      store.getOrCreateUser("user-1"); // 10 credits
+      const result = store.addCredits("user-1", -15, "Over-removal", "admin_remove");
+      expect(result.success).toBe(true);
+      expect(result.balance).toBe(0); // floored, not -5
+      const user = store.getUser("user-1")!;
+      expect(user.credits).toBe(0);
+      expect(user.totalSpent).toBe(10);  // actual delta, not 15
+      expect(user.totalEarned).toBe(10); // unchanged
+      // Transaction records actual delta too
+      const txs = store.getTransactions("user-1");
+      const removeTx = txs.find((tx) => tx.type === "admin_remove");
+      expect(removeTx).toBeDefined();
+      expect(removeTx!.amount).toBe(-10); // clamped, not -15
+    });
   });
 
   describe("getTransactions", () => {

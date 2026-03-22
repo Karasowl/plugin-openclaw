@@ -1,5 +1,6 @@
 import type { CreditsStore } from "../store/credits-store.js";
 import type { AccessCreditsConfig } from "../config.js";
+import { isSessionDenied, isSessionTriggered } from "../gate-state.js";
 
 interface ModelResolveEvent {
   type: string;
@@ -15,20 +16,19 @@ interface ModelOverride {
   model?: string;
 }
 
+/**
+ * Layer 4 - Cost reduction
+ * Only redirect to cheap model if this session was triggered AND denied.
+ */
 export function createModelGateHandler(
-  store: CreditsStore,
+  _store: CreditsStore,
   config: AccessCreditsConfig,
 ): (event: ModelResolveEvent) => ModelOverride | undefined {
   return (event: ModelResolveEvent): ModelOverride | undefined => {
-    const senderId = event.context.senderId ?? event.context.from;
-    if (!senderId) return undefined;
-
-    if (config.adminUsers.includes(senderId)) return undefined;
-
-    if (!store.hasEnoughCredits(senderId, config.costPerMessage)) {
-      return { model: config.fallbackModel };
+    if (!isSessionTriggered(event.sessionKey) || !isSessionDenied(event.sessionKey)) {
+      return undefined;
     }
 
-    return undefined;
+    return { model: config.fallbackModel };
   };
 }
