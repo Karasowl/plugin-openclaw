@@ -28,7 +28,7 @@ const SELF_TOOLS = new Set([
  */
 export function createToolGateHandler(
   _store: CreditsStore,
-  _config: AccessCreditsConfig,
+  _getConfig: () => AccessCreditsConfig,
 ) {
   return (event: ToolCallEvent): void => {
     const toolName = event.context.toolName;

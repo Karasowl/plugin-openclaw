@@ -11,7 +11,7 @@ interface PluginApi {
 export function registerCreditTools(
   api: PluginApi,
   store: CreditsStore,
-  _config: AccessCreditsConfig,
+  _getConfig: () => AccessCreditsConfig,
 ): void {
   api.registerTool(createCheckBalanceTool(store));
   api.registerTool(createDeductCreditsTool(store));

@@ -20,14 +20,14 @@ interface MessageEvent {
   };
 }
 
-function matchesTrigger(content: string, config: AccessCreditsConfig): boolean {
+function matchesTrigger(content: string, triggerHashtags: string[], triggerCommands: string[]): boolean {
   const lower = content.toLowerCase().trim();
 
-  for (const hashtag of config.triggerHashtags) {
+  for (const hashtag of triggerHashtags) {
     if (lower.includes(hashtag.toLowerCase())) return true;
   }
 
-  for (const command of config.triggerCommands) {
+  for (const command of triggerCommands) {
     if (lower.startsWith(command.toLowerCase())) return true;
   }
 
@@ -42,14 +42,16 @@ function extractSenderId(event: MessageEvent): string | null {
   );
 }
 
-export function createMessageGateHandler(store: CreditsStore, config: AccessCreditsConfig) {
+export function createMessageGateHandler(store: CreditsStore, getConfig: () => AccessCreditsConfig) {
   return async (event: MessageEvent): Promise<void> => {
     if (event.type !== "message" || event.action !== "received") return;
 
     const content = event.context.content;
     if (!content) return;
 
-    if (!matchesTrigger(content, config)) return;
+    const config = getConfig();
+
+    if (!matchesTrigger(content, config.triggerHashtags, config.triggerCommands)) return;
 
     // This message matches a trigger - mark the session so hard gates know to act
     markSessionTriggered(event.sessionKey);

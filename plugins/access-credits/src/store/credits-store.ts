@@ -36,8 +36,11 @@ const lastInteraction = new Map<string, number>();
 
 export function createCreditsStore(
   runtimeStore: RuntimeStore,
-  initialCredits: number,
+  getInitialCredits: number | (() => number),
 ): CreditsStore {
+  const resolveInitialCredits = typeof getInitialCredits === "function"
+    ? getInitialCredits
+    : () => getInitialCredits;
   function getData(): CreditsStoreData {
     const raw = runtimeStore.get("credits-data") as CreditsStoreData | undefined;
     return raw ?? { users: {}, transactions: [] };
@@ -60,11 +63,12 @@ export function createCreditsStore(
       }
 
       const now = new Date().toISOString();
+      const credits = resolveInitialCredits();
       const user: UserAccount = {
         userId,
         displayName,
-        credits: initialCredits,
-        totalEarned: initialCredits,
+        credits,
+        totalEarned: credits,
         totalSpent: 0,
         lastActivity: now,
         createdAt: now,
@@ -76,8 +80,8 @@ export function createCreditsStore(
         id: generateId(),
         userId,
         type: "initial",
-        amount: initialCredits,
-        balance: initialCredits,
+        amount: credits,
+        balance: credits,
         reason: "Initial credits on first interaction",
         timestamp: now,
       };
@@ -89,7 +93,7 @@ export function createCreditsStore(
 
     hasEnoughCredits(userId: string, amount: number): boolean {
       const user = this.getUser(userId);
-      if (!user) return initialCredits >= amount;
+      if (!user) return resolveInitialCredits() >= amount;
       return user.credits >= amount;
     },
 

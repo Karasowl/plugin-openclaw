@@ -68,7 +68,7 @@ describe("MessageGateHandler", () => {
 
   beforeEach(() => {
     store = createCreditsStore(createMockRuntimeStore(), 10);
-    handler = createMessageGateHandler(store, baseConfig);
+    handler = createMessageGateHandler(store, () => baseConfig);
   });
 
   it("allows message when user has credits", async () => {
@@ -118,7 +118,7 @@ describe("MessageGateHandler", () => {
   });
 
   it("does not block in observe mode", async () => {
-    const observeHandler = createMessageGateHandler(store, observeConfig);
+    const observeHandler = createMessageGateHandler(store, () => observeConfig);
     drainCredits(store, "user-1");
     const event = createMessageEvent();
     await observeHandler(event);
@@ -127,7 +127,7 @@ describe("MessageGateHandler", () => {
 
   it("allows first query even with cooldown enabled", async () => {
     const cooldownConfig = { ...baseConfig, cooldownSeconds: 60 };
-    const cooldownHandler = createMessageGateHandler(store, cooldownConfig);
+    const cooldownHandler = createMessageGateHandler(store, () => cooldownConfig);
     const uid = "cooldown-user-1";
     store.getOrCreateUser(uid);
 
@@ -140,7 +140,7 @@ describe("MessageGateHandler", () => {
 
   it("enforces cooldown on second query", async () => {
     const cooldownConfig = { ...baseConfig, cooldownSeconds: 60 };
-    const cooldownHandler = createMessageGateHandler(store, cooldownConfig);
+    const cooldownHandler = createMessageGateHandler(store, () => cooldownConfig);
     const uid = "cooldown-user-2";
     store.getOrCreateUser(uid);
 
@@ -168,7 +168,7 @@ describe("ModelGateHandler", () => {
 
   beforeEach(() => {
     store = createCreditsStore(createMockRuntimeStore(), 10);
-    handler = createModelGateHandler(store, baseConfig);
+    handler = createModelGateHandler(store, () => baseConfig);
     clearSession("test");
   });
 
@@ -209,7 +209,7 @@ describe("PromptInjectorHandler", () => {
 
   beforeEach(() => {
     store = createCreditsStore(createMockRuntimeStore(), 10);
-    handler = createPromptInjectorHandler(store, baseConfig);
+    handler = createPromptInjectorHandler(store, () => baseConfig);
     clearSession("test");
   });
 
@@ -306,7 +306,7 @@ describe("PromptInjectorHandler", () => {
   });
 
   it("skips injection in observe mode", () => {
-    const observeHandler = createPromptInjectorHandler(store, observeConfig);
+    const observeHandler = createPromptInjectorHandler(store, () => observeConfig);
     store.getOrCreateUser("user-1");
     markSessionTriggered("test");
     let injected = "";
@@ -343,7 +343,7 @@ describe("ToolGateHandler", () => {
 
   beforeEach(() => {
     store = createCreditsStore(createMockRuntimeStore(), 10);
-    handler = createToolGateHandler(store, baseConfig);
+    handler = createToolGateHandler(store, () => baseConfig);
     clearSession("test");
   });
 
@@ -415,7 +415,7 @@ describe("MessageSendingGateHandler", () => {
 
   beforeEach(() => {
     store = createCreditsStore(createMockRuntimeStore(), 10);
-    handler = createMessageSendingGateHandler(store, baseConfig);
+    handler = createMessageSendingGateHandler(store, () => baseConfig);
     clearSession("test");
   });
 
@@ -520,6 +520,23 @@ describe("MessageSendingGateHandler", () => {
       },
     });
     expect(replacedWith).toContain("créditos suficientes");
+  });
+
+  it("does not deduct credits in observe mode", () => {
+    const observeHandler = createMessageSendingGateHandler(store, () => observeConfig);
+    store.getOrCreateUser("user-1");
+    markSessionTriggered("test");
+    observeHandler({
+      type: "message", action: "sending", sessionKey: "test",
+      context: {
+        senderId: "user-1",
+        content: "bot response",
+        replaceContent: () => {},
+        cancel: () => {},
+      },
+    });
+    const user = store.getUser("user-1")!;
+    expect(user.credits).toBe(10); // unchanged in observe mode
   });
 
   it("clears session state after handling", () => {

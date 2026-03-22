@@ -24,12 +24,13 @@ interface MessageSendingEvent {
  */
 export function createMessageSendingGateHandler(
   store: CreditsStore,
-  config: AccessCreditsConfig,
+  getConfig: () => AccessCreditsConfig,
 ) {
   return (event: MessageSendingEvent): void => {
     // Only act on sessions triggered by a gated message
     if (!isSessionTriggered(event.sessionKey)) return;
 
+    const config = getConfig();
     const senderId = event.context.senderId ?? event.context.from;
 
     if (isSessionDenied(event.sessionKey)) {
@@ -53,6 +54,12 @@ export function createMessageSendingGateHandler(
         event.context.cancel();
       }
 
+      clearSession(event.sessionKey);
+      return;
+    }
+
+    // In observe mode, don't deduct or block — just clean up session state
+    if (config.mode === "observe") {
       clearSession(event.sessionKey);
       return;
     }

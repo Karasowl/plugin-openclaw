@@ -16,9 +16,10 @@ interface PromptBuildEvent {
 
 export function createPromptInjectorHandler(
   store: CreditsStore,
-  config: AccessCreditsConfig,
+  getConfig: () => AccessCreditsConfig,
 ) {
   return (event: PromptBuildEvent): void => {
+    const config = getConfig();
     if (config.mode === "observe") return;
 
     // Only act on sessions that were triggered by a gated message

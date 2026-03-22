@@ -1,5 +1,6 @@
 import { createCreditsStore } from "./store/credits-store.js";
 import { resolveConfig } from "./config.js";
+import { loadConfigOverrides } from "./config-store.js";
 import { createMessageGateHandler } from "./hooks/message-gate.js";
 import { createModelGateHandler } from "./hooks/model-gate.js";
 import { createPromptInjectorHandler } from "./hooks/prompt-inject.js";
@@ -26,33 +27,34 @@ export default {
 
   register(api: PluginApi) {
     const rawConfig = api.getConfig();
-    const config = resolveConfig(rawConfig);
     const runtimeStore = api.getRuntimeStore();
-    const store = createCreditsStore(runtimeStore, config.initialCredits);
+    const overrides = loadConfigOverrides(runtimeStore);
+    const configContainer = { current: resolveConfig(rawConfig, overrides) };
+    const getConfig = () => configContainer.current;
+
+    const store = createCreditsStore(runtimeStore, () => configContainer.current.initialCredits);
 
     // === OBSERVATION LAYER (always active) ===
-    // Intercept incoming messages: log activity, check credits, send immediate response
-    api.registerHook("message:received", createMessageGateHandler(store, config));
+    api.registerHook("message:received", createMessageGateHandler(store, getConfig));
 
     // === ENFORCEMENT LAYERS (only in "enforce" mode) ===
-    if (config.mode === "enforce") {
-      // Layer 1 (soft): Inject credit context into system prompt
-      api.registerHook("before_prompt_build", createPromptInjectorHandler(store, config));
-
-      // Layer 2 (hard): Block ALL tool calls if user has no credits
-      api.registerHook("before_tool_call", createToolGateHandler(store, config));
-
-      // Layer 3 (hard): Cancel/replace outbound message if user has no credits
-      api.registerHook("message_sending", createMessageSendingGateHandler(store, config));
-
-      // Layer 4 (cost reduction): Redirect to cheapest model if no credits
-      api.registerHook("before_model_resolve", createModelGateHandler(store, config));
-    }
+    // Note: mode can change at runtime via dashboard, but hooks are registered once.
+    // Each hook checks getConfig().mode internally when relevant.
+    api.registerHook("before_prompt_build", createPromptInjectorHandler(store, getConfig));
+    api.registerHook("before_tool_call", createToolGateHandler(store, getConfig));
+    api.registerHook("message_sending", createMessageSendingGateHandler(store, getConfig));
+    api.registerHook("before_model_resolve", createModelGateHandler(store, getConfig));
 
     // Register tools for the bot to manage credits
-    registerCreditTools(api, store, config);
+    registerCreditTools(api, store, getConfig);
 
-    // Register HTTP routes for admin dashboard
-    registerDashboardRoutes(api as Parameters<typeof registerDashboardRoutes>[0], store, config);
+    // Register HTTP routes for dashboard + API
+    registerDashboardRoutes(
+      api as Parameters<typeof registerDashboardRoutes>[0],
+      store,
+      configContainer,
+      rawConfig,
+      runtimeStore,
+    );
   },
 };

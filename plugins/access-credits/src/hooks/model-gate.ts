@@ -22,13 +22,13 @@ interface ModelOverride {
  */
 export function createModelGateHandler(
   _store: CreditsStore,
-  config: AccessCreditsConfig,
+  getConfig: () => AccessCreditsConfig,
 ): (event: ModelResolveEvent) => ModelOverride | undefined {
   return (event: ModelResolveEvent): ModelOverride | undefined => {
     if (!isSessionTriggered(event.sessionKey) || !isSessionDenied(event.sessionKey)) {
       return undefined;
     }
 
-    return { model: config.fallbackModel };
+    return { model: getConfig().fallbackModel };
   };
 }
