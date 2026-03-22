@@ -92,35 +92,60 @@ This logs all activity without blocking anyone. Use the HTTP API to see usage pa
 
 ## Bot tools
 
-The plugin registers 3 tools that the bot can use:
+The plugin registers 2 tools that the bot can use:
 
 | Tool | Description |
 |------|-------------|
 | `access_credits_check_balance` | Check a user's credit balance |
-| `access_credits_deduct` | Deduct credits after responding |
 | `access_credits_award` | Award credits for valuable contributions |
 
+Credits are **deducted automatically** by the runtime (Layer 3, `message_sending` hook) — there is no deduct tool exposed to the model, which prevents double-charging.
+
 The bot is instructed (via prompt injection) to:
-1. Deduct credits after each interaction
-2. Evaluate messages longer than `contributionMinLength` for intellectual value
-3. Award credits for genuine contributions
+1. Evaluate messages longer than `contributionMinLength` for intellectual value
+2. Award credits for genuine contributions
 
-## Admin HTTP API
+## Web dashboard
 
-All endpoints require plugin authentication.
+The plugin includes an embedded web dashboard at `/plugins/access-credits/`. No extra setup — it ships inside the plugin bundle.
+
+- **Overview**: total users, credits in circulation, transactions, health status
+- **Users**: searchable, paginated user list with credit adjustment
+- **Config**: edit all settings live (changes apply on next message, no restart needed)
+
+## HTTP API
+
+### Gateway routes (primary)
+
+These routes are served under `/plugins/access-credits/*` with `auth: "gateway"`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/access-credits/users` | List all users and balances |
+| GET | `/plugins/access-credits/` | Web dashboard |
+| GET | `/plugins/access-credits/health` | Plugin health check |
+| GET | `/plugins/access-credits/stats` | Usage statistics |
+| GET | `/plugins/access-credits/users?offset=0&limit=50&q=` | Users (paginated, searchable) |
+| GET | `/plugins/access-credits/config` | Current configuration |
+| PATCH | `/plugins/access-credits/config` | Update configuration (validated) |
+| GET | `/plugins/access-credits/user/:userId` | User details |
+| GET | `/plugins/access-credits/user/:userId/transactions` | Transaction history |
+| POST | `/plugins/access-credits/user/:userId` | Add/remove credits |
+
+### Legacy routes
+
+The original `/access-credits/*` routes (with `auth: "plugin"`) are still available for backward compatibility:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/access-credits/users` | List all users |
 | GET | `/access-credits/stats` | Usage statistics |
-| GET | `/access-credits/user/:userId` | User details |
+| GET/POST | `/access-credits/user/:userId` | User details / adjust credits |
 | GET | `/access-credits/user/:userId/transactions` | Transaction history |
-| POST | `/access-credits/user/:userId` | Add/remove credits |
 
 ### Add credits example
 
 ```bash
-curl -X POST http://localhost:PORT/access-credits/user/USER_ID \
+curl -X POST http://localhost:PORT/plugins/access-credits/user/USER_ID \
   -H "Content-Type: application/json" \
   -d '{"action": "add", "amount": 10, "reason": "Manual top-up"}'
 ```
@@ -137,7 +162,7 @@ curl -X POST http://localhost:PORT/access-credits/user/USER_ID \
 # Install dependencies
 pnpm install
 
-# Run tests (55 tests)
+# Run tests
 pnpm test
 
 # Type check

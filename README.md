@@ -40,7 +40,7 @@ pnpm build
 
 1. Create a new directory under `plugins/`
 2. Add `openclaw.plugin.json`, `package.json`, `tsconfig.json`, `vite.config.ts`
-3. Implement with `definePluginEntry` from `openclaw/plugin-sdk/core`
+3. Export a default object with `id`, `name`, `description`, and a `register(api)` method
 4. Add tests under `tests/`
 
 ## Architecture
