@@ -1,0 +1,68 @@
+{
+  "id": "access-credits",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["observe", "enforce"],
+        "default": "enforce",
+        "description": "observe: only log activity without blocking. enforce: full credit gate with blocking."
+      },
+      "initialCredits": {
+        "type": "number",
+        "default": 10,
+        "description": "Credits given to new users on first interaction"
+      },
+      "costPerMessage": {
+        "type": "number",
+        "default": 1,
+        "description": "Credits deducted per bot interaction"
+      },
+      "triggerHashtags": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": ["#ask", "#bot"],
+        "description": "Hashtags that trigger credit-gated bot interaction"
+      },
+      "triggerCommands": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": ["/ask", "/bot"],
+        "description": "Commands that trigger credit-gated bot interaction"
+      },
+      "adminUsers": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": [],
+        "description": "User IDs that bypass credit checks and can manage credits"
+      },
+      "fallbackModel": {
+        "type": "string",
+        "default": "cheapest",
+        "description": "Model to use when user has no credits (minimizes token cost)"
+      },
+      "evaluateContributions": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether the bot should evaluate user contributions and award credits"
+      },
+      "contributionReward": {
+        "type": "number",
+        "default": 2,
+        "description": "Credits awarded for a valuable contribution"
+      },
+      "contributionMinLength": {
+        "type": "number",
+        "default": 100,
+        "description": "Minimum message length (chars) to evaluate for contribution rewards. Avoids wasting tokens on short messages."
+      },
+      "cooldownSeconds": {
+        "type": "number",
+        "default": 0,
+        "description": "Minimum seconds between bot interactions per user. 0 = no cooldown. This is a hard gate independent of LLM."
+      }
+    },
+    "additionalProperties": false
+  }
+}

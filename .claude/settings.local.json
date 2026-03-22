@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(tree \"C:\\\\Users\\\\adven\\\\OneDrive\\\\Documentos\\\\dev-projects\\\\plugin-openclaw\" -L 3 2>/dev/null || find \"C:\\\\Users\\\\adven\\\\OneDrive\\\\Documentos\\\\dev-projects\\\\plugin-openclaw\" -not -path '*/\\\\.git/*' -not -path '*/node_modules/*' -type f | sort)"
+    ]
+  }
+}

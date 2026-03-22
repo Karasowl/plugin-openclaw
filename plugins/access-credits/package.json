@@ -1,0 +1,35 @@
+{
+  "name": "@isma/openclaw-plugin-access-credits",
+  "version": "0.1.0",
+  "description": "Credit-based access control for OpenClaw bots. Rate limit bot usage per user with a points system. Users earn credits by contributing valuable content. Includes message interception middleware, usage metering, group management, and admin tools.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "openclaw.plugin.json"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "access-control",
+    "credits",
+    "rate-limiting",
+    "bot-management",
+    "group-management",
+    "points-system",
+    "metered-access",
+    "telegram",
+    "whatsapp",
+    "discord"
+  ],
+  "peerDependencies": {
+    "openclaw": ">=2026.3.0"
+  },
+  "devDependencies": {}
+}
