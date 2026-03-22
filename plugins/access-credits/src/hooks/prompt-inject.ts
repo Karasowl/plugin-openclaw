@@ -1,62 +1,78 @@
 import type { CreditsStore } from "../store/credits-store.js";
 import type { AccessCreditsConfig } from "../config.js";
-import { isSessionTriggered, isSessionDenied, getDenialReason } from "../gate-state.js";
+import { isSessionTriggered, isSessionDenied, getDenialReason, getSender } from "../gate-state.js";
 
-interface PromptBuildEvent {
-  type: string;
-  action: string;
-  sessionKey: string;
-  context: {
-    senderId?: string;
-    from?: string;
-    content?: string;
-    appendSystemContext?: (text: string) => void;
-  };
+/**
+ * OpenClaw lifecycle hook: before_prompt_build
+ * Registered via api.on("before_prompt_build", handler).
+ *
+ * Contract: (event, ctx) => { appendSystemContext? } | void
+ */
+
+interface BeforePromptBuildEvent {
+  prompt: string;
+  messages: unknown[];
+}
+
+interface AgentContext {
+  agentId?: string;
+  sessionKey?: string;
+  sessionId?: string;
+  workspaceDir?: string;
+  messageProvider?: string;
+  trigger?: string;
+  channelId?: string;
+}
+
+interface BeforePromptBuildResult {
+  appendSystemContext?: string;
 }
 
 export function createPromptInjectorHandler(
   store: CreditsStore,
   getConfig: () => AccessCreditsConfig,
 ) {
-  return (event: PromptBuildEvent): void => {
+  return (event: BeforePromptBuildEvent, ctx: AgentContext): BeforePromptBuildResult | void => {
     const config = getConfig();
     if (config.mode === "observe") return;
 
+    const sessionKey = ctx.sessionKey;
+    if (!sessionKey) return;
+
     // Only act on sessions that were triggered by a gated message
-    if (!isSessionTriggered(event.sessionKey)) return;
+    if (!isSessionTriggered(sessionKey)) return;
 
-    const senderId = event.context.senderId ?? event.context.from;
+    // Sender was stored by message:received handler via gate-state bridge
+    const senderId = getSender(sessionKey);
     if (!senderId) return;
-
-    const append = event.context.appendSystemContext;
-    if (!append) return;
 
     if (config.adminUsers.includes(senderId)) return;
 
     // If session was denied, inject block instruction with correct reason
-    if (isSessionDenied(event.sessionKey)) {
-      const reason = getDenialReason(event.sessionKey);
+    if (isSessionDenied(sessionKey)) {
+      const reason = getDenialReason(sessionKey);
 
       if (reason === "cooldown") {
-        append(
-          `[ACCESS-CREDITS] User "${senderId}" is on cooldown. ` +
-          `DO NOT process their request. Reply ONLY with a brief message ` +
-          `telling them to wait a moment before sending another query.`,
-        );
-      } else {
-        const user = store.getUser(senderId);
-        const balance = user?.credits ?? 0;
-        append(
+        return {
+          appendSystemContext:
+            `[ACCESS-CREDITS] User "${senderId}" is on cooldown. ` +
+            `DO NOT process their request. Reply ONLY with a brief message ` +
+            `telling them to wait a moment before sending another query.`,
+        };
+      }
+
+      const user = store.getUser(senderId);
+      const balance = user?.credits ?? 0;
+      return {
+        appendSystemContext:
           `[ACCESS-CREDITS] User "${senderId}" has ${balance} credits. ` +
           `They need ${config.costPerMessage} credits to interact. ` +
           `DO NOT process their request. Reply ONLY with a brief message ` +
           `telling them they don't have enough credits and their current balance is ${balance}.`,
-        );
-      }
-      return;
+      };
     }
 
-    // User has credits - inject context (deduction is handled automatically by the runtime)
+    // User has credits — inject context (deduction handled by message_sending gate)
     const user = store.getUser(senderId);
     if (!user) return;
 
@@ -66,7 +82,8 @@ export function createPromptInjectorHandler(
     ];
 
     if (config.evaluateContributions) {
-      const contentLength = event.context.content?.length ?? 0;
+      // Use event.prompt as content measure (lifecycle hooks don't carry raw message)
+      const contentLength = event.prompt?.length ?? 0;
       if (contentLength >= config.contributionMinLength) {
         lines.push(
           `The user's message is ${contentLength} characters long. ` +
@@ -78,6 +95,6 @@ export function createPromptInjectorHandler(
       }
     }
 
-    append(lines.join(" "));
+    return { appendSystemContext: lines.join(" ") };
   };
 }

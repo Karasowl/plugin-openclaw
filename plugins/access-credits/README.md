@@ -18,27 +18,51 @@ OpenClaw hooks are observational and cannot directly block messages. This plugin
 
 | Layer | Hook | Type | What it does |
 |-------|------|------|-------------|
-| 0 | `message:received` | Soft | Detects no-credit users, sends immediate "no credits" response + enforces cooldown |
+| 0 | `message:received` | Soft + deduction | Detects no-credit users, deducts credits at admission, enforces cooldown |
 | 1 | `before_prompt_build` | Soft | Injects "DO NOT respond" instruction into system prompt |
 | 2 | `before_tool_call` | **Hard** | Blocks ALL tool calls if user has no credits |
-| 3 | `message_sending` | **Hard** | Replaces bot response with "no credits" message |
+| 3 | `message_sending` | **Hard** | Replaces bot response with denial message if session was denied |
 | 4 | `before_model_resolve` | Cost reduction | Redirects to cheapest model to minimize wasted tokens |
 
 Layers 2 and 3 are hard blocks. Even if the model ignores the prompt instruction (Layer 1), it can't execute tools and its response gets replaced before reaching the user.
 
+Credit deduction happens at Layer 0 (`message:received`) where the plugin has the real `sessionKey` for accurate per-session tracking.
+
 ## Installation
 
+### Prerequisites
+
+- [OpenClaw](https://openclaw.dev) gateway running (>= 2026.3.0)
+- Node.js >= 18
+- pnpm (recommended) or npm
+
+### Build the plugin
+
 ```bash
-# Development (local link)
+cd plugins/access-credits
+
+# Install dependencies
+pnpm install
+
+# Build
+pnpm build
+```
+
+This produces `dist/index.js` (~109 kB).
+
+### Install in OpenClaw
+
+```bash
+# Development (local link — changes apply on rebuild)
 openclaw --profile dev plugins install -l ./plugins/access-credits
 
 # From npm (once published)
 openclaw plugins install @isma/openclaw-plugin-access-credits
 ```
 
-## Configuration
+### Configure
 
-Add to your OpenClaw config:
+Add to your OpenClaw config file (`openclaw.config.json5` or equivalent):
 
 ```json5
 {
@@ -80,6 +104,57 @@ Add to your OpenClaw config:
 }
 ```
 
+### Verify installation
+
+1. Start (or restart) the OpenClaw gateway
+2. Check the gateway logs for:
+   ```
+   [access-credits] State persisted to /path/to/.openclaw
+   ```
+3. Open the dashboard: `http://localhost:PORT/plugins/access-credits/`
+4. Send a test message with a trigger (e.g. `#ask hello`) from a non-admin user
+
+## Testing
+
+### Run all tests
+
+```bash
+cd plugins/access-credits
+
+# Run tests (119 tests across 6 test files)
+pnpm test
+
+# Type check
+pnpm typecheck
+
+# Both + build
+pnpm typecheck && pnpm test && pnpm build
+```
+
+### Manual integration test
+
+After installing in OpenClaw:
+
+1. **Observe mode first** — start with `mode: "observe"` to see activity without blocking
+2. **Send a triggered message** — e.g. `#ask what is AI?` from Telegram/WhatsApp
+3. **Check the dashboard** — verify the user appears with credits deducted
+4. **Restart the gateway** — verify credits survive (file persistence)
+5. **Switch to enforce mode** — change config to `mode: "enforce"`
+6. **Drain credits** — send messages until credits run out
+7. **Verify blocking** — the bot should respond with "No tienes créditos suficientes"
+8. **Admin bypass** — add your user ID to `adminUsers`, verify you can still interact
+
+### Test file overview
+
+| File | Tests | What it covers |
+|------|-------|---------------|
+| `hooks.test.ts` | Message gate, model gate, prompt injection, tool gate, message sending gate, session reuse, FIFO queue |
+| `credits-store.test.ts` | Credit operations, deduction, user management, transactions |
+| `config-store.test.ts` | Config loading, runtime overrides, validation |
+| `cooldown.test.ts` | Cooldown enforcement, timing |
+| `file-persistence.test.ts` | Disk persistence, corrupt file handling, async writes, write errors |
+| `contribution.test.ts` | Contribution evaluation, reward logic |
+
 ## Recommended: Start in observe mode
 
 Before enforcing credits, run in `observe` mode first:
@@ -99,7 +174,7 @@ The plugin registers 2 tools that the bot can use:
 | `access_credits_check_balance` | Check a user's credit balance |
 | `access_credits_award` | Award credits for valuable contributions |
 
-Credits are **deducted automatically** by the runtime (Layer 3, `message_sending` hook) — there is no deduct tool exposed to the model, which prevents double-charging.
+Credits are **deducted automatically** at admission time (`message:received` hook) — there is no deduct tool exposed to the model, which prevents double-charging.
 
 The bot is instructed (via prompt injection) to:
 1. Evaluate messages longer than `contributionMinLength` for intellectual value
@@ -150,15 +225,28 @@ curl -X POST http://localhost:PORT/plugins/access-credits/user/USER_ID \
   -d '{"action": "add", "amount": 10, "reason": "Manual top-up"}'
 ```
 
+## Persistence
+
+State is persisted to disk as JSON at the directory returned by `api.runtime.state.resolveStateDir()` (typically `~/.openclaw/`).
+
+- **File**: `access-credits-state.json`
+- **Writes**: async and coalesced — multiple `set()` calls in the same tick produce one disk write
+- **Reads**: from in-memory cache (instant, sync)
+- **Corrupt files**: backed up as `.corrupt.{timestamp}` with a warning log, then starts fresh
+- **Fallback**: if `resolveStateDir()` returns empty, uses in-memory store (logs warning)
+- **Cooldown tracking**: in-memory only (resets on restart — intentional)
+
 ## Known limitations
 
 - **Not a hard pipeline block**: OpenClaw does not yet support canceling agent sessions from hooks. The 4-layer strategy is defense-in-depth, not a perfect firewall. Layers 2+3 are hard blocks, but some tokens are still consumed.
-- **Persistence**: Uses `createPluginRuntimeStore` for data storage. If this API changes, a SQLite fallback may be needed.
+- **FIFO bridge for denial messages**: The `message_sending` hook does not receive `sessionKey` from OpenClaw. Denial content replacement uses a FIFO bridge. If two responses for the same user in the same conversation arrive out of order, the denial message type could be swapped (cooldown vs no-credits). Billing is unaffected — credits are deducted at admission with the real `sessionKey`.
 - **Contribution evaluation cost**: The bot uses tokens to evaluate contributions. The `contributionMinLength` setting helps avoid evaluating short messages.
 
 ## Development
 
 ```bash
+cd plugins/access-credits
+
 # Install dependencies
 pnpm install
 

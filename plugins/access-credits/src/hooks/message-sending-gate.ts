@@ -1,89 +1,100 @@
 import type { CreditsStore } from "../store/credits-store.js";
 import type { AccessCreditsConfig } from "../config.js";
-import { isSessionDenied, isSessionTriggered, getDenialReason, clearSession } from "../gate-state.js";
+import {
+  isSessionDenied,
+  isSessionTriggered,
+  getDenialReason,
+  clearSession,
+  getSessionKeyByChannel,
+  getSender,
+} from "../gate-state.js";
+
+/**
+ * OpenClaw lifecycle hook: message_sending
+ * Registered via api.on("message_sending", handler).
+ *
+ * Contract: (event, ctx) => { content?, cancel? } | void
+ *
+ * NOTE: message_sending context does NOT include sessionKey.
+ * We bridge via channelId:accountId:conversationId:senderId composite key
+ * set in message:received. event.to = the original sender.
+ */
 
 interface MessageSendingEvent {
-  type: string;
-  action: string;
-  sessionKey: string;
-  context: {
-    to?: string;
-    content?: string;
-    senderId?: string;
-    from?: string;
-    channelId?: string;
-    cancel?: () => void;
-    replaceContent?: (content: string) => void;
-  };
+  to: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface MessageContext {
+  channelId: string;
+  accountId?: string;
+  conversationId?: string;
+}
+
+interface MessageSendingResult {
+  content?: string;
+  cancel?: boolean;
 }
 
 /**
  * HARD GATE - Layer 3
- * If the session was triggered AND denied, replace the bot's outbound message.
- * Also handles automatic credit deduction for allowed messages.
+ * If the session was triggered AND denied, replace the bot's outbound message
+ * with the appropriate denial reason.
+ *
+ * Credit deduction is handled in message:received (which has the real
+ * sessionKey). This hook only does content replacement for denied sessions.
+ *
+ * KNOWN LIMITATION: message_sending does not receive sessionKey from OpenClaw.
+ * Session correlation uses a FIFO bridge keyed by
+ * channelId:accountId:conversationId:senderId. If two responses for the same
+ * sender in the same conversation are delivered out of order, the bridge may
+ * match the wrong session. Because credits are already deducted at admission
+ * (in message:received), the billing impact is zero — only the denial message
+ * type could be swapped (cooldown ↔ no_credits) in that rare edge case.
  */
 export function createMessageSendingGateHandler(
   store: CreditsStore,
   getConfig: () => AccessCreditsConfig,
 ) {
-  return (event: MessageSendingEvent): void => {
+  return (event: MessageSendingEvent, ctx: MessageContext): MessageSendingResult | void => {
+    // event.to = the original sender (bot is replying to them)
+    // Look up sessionKey via full conversation+sender composite key (FIFO)
+    const sessionKey = getSessionKeyByChannel({
+      channelId: ctx.channelId,
+      accountId: ctx.accountId,
+      conversationId: ctx.conversationId,
+      senderId: event.to,
+    });
+    if (!sessionKey) return;
+
     // Only act on sessions triggered by a gated message
-    if (!isSessionTriggered(event.sessionKey)) return;
+    if (!isSessionTriggered(sessionKey)) return;
 
     const config = getConfig();
-    const senderId = event.context.senderId ?? event.context.from;
 
-    if (isSessionDenied(event.sessionKey)) {
-      // Denied: replace or cancel the response with reason-appropriate message
-      const reason = getDenialReason(event.sessionKey);
+    if (isSessionDenied(sessionKey)) {
+      // Denied: replace the response with reason-appropriate message
+      const reason = getDenialReason(sessionKey);
+      clearSession(sessionKey);
 
-      if (event.context.replaceContent) {
-        if (reason === "cooldown") {
-          event.context.replaceContent(
-            `⏳ Espera un momento antes de enviar otra consulta al bot.`,
-          );
-        } else {
-          const user = senderId ? store.getUser(senderId) : null;
-          const balance = user?.credits ?? 0;
-          event.context.replaceContent(
-            `⛔ No tienes créditos suficientes para usar el bot. Tu balance: ${balance}. ` +
-            `Necesitas ${config.costPerMessage} crédito(s) por interacción.`,
-          );
-        }
-      } else if (event.context.cancel) {
-        event.context.cancel();
+      if (reason === "cooldown") {
+        return {
+          content: `⏳ Espera un momento antes de enviar otra consulta al bot.`,
+        };
       }
 
-      clearSession(event.sessionKey);
-      return;
+      const senderId = getSender(sessionKey) ?? event.to;
+      const user = senderId ? store.getUser(senderId) : null;
+      const balance = user?.credits ?? 0;
+      return {
+        content:
+          `⛔ No tienes créditos suficientes para usar el bot. Tu balance: ${balance}. ` +
+          `Necesitas ${config.costPerMessage} crédito(s) por interacción.`,
+      };
     }
 
-    // In observe mode, don't deduct or block — just clean up session state
-    if (config.mode === "observe") {
-      clearSession(event.sessionKey);
-      return;
-    }
-
-    // Allowed: auto-deduct credits (don't depend on the model calling the tool)
-    if (senderId && !config.adminUsers.includes(senderId)) {
-      const result = store.deductIfSufficient(senderId, config.costPerMessage, "Bot interaction");
-
-      // Race protection: if another session consumed the last credits between
-      // message-gate admission and now, block this response
-      if (!result.success) {
-        if (event.context.replaceContent) {
-          event.context.replaceContent(
-            `⛔ No tienes créditos suficientes para usar el bot. Tu balance: ${result.balance}. ` +
-            `Necesitas ${config.costPerMessage} crédito(s) por interacción.`,
-          );
-        } else if (event.context.cancel) {
-          event.context.cancel();
-        }
-        clearSession(event.sessionKey);
-        return;
-      }
-    }
-
-    clearSession(event.sessionKey);
+    // Admitted: credits already deducted in message:received. Just clean up.
+    clearSession(sessionKey);
   };
 }

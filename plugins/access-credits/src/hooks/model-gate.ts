@@ -2,18 +2,30 @@ import type { CreditsStore } from "../store/credits-store.js";
 import type { AccessCreditsConfig } from "../config.js";
 import { isSessionDenied, isSessionTriggered } from "../gate-state.js";
 
-interface ModelResolveEvent {
-  type: string;
-  action: string;
-  sessionKey: string;
-  context: {
-    senderId?: string;
-    from?: string;
-  };
+/**
+ * OpenClaw lifecycle hook: before_model_resolve
+ * Registered via api.on("before_model_resolve", handler).
+ *
+ * Contract: (event, ctx) => { modelOverride? } | void
+ */
+
+interface BeforeModelResolveEvent {
+  prompt: string;
 }
 
-interface ModelOverride {
-  model?: string;
+interface AgentContext {
+  agentId?: string;
+  sessionKey?: string;
+  sessionId?: string;
+  workspaceDir?: string;
+  messageProvider?: string;
+  trigger?: string;
+  channelId?: string;
+}
+
+interface BeforeModelResolveResult {
+  modelOverride?: string;
+  providerOverride?: string;
 }
 
 /**
@@ -23,12 +35,15 @@ interface ModelOverride {
 export function createModelGateHandler(
   _store: CreditsStore,
   getConfig: () => AccessCreditsConfig,
-): (event: ModelResolveEvent) => ModelOverride | undefined {
-  return (event: ModelResolveEvent): ModelOverride | undefined => {
-    if (!isSessionTriggered(event.sessionKey) || !isSessionDenied(event.sessionKey)) {
+): (event: BeforeModelResolveEvent, ctx: AgentContext) => BeforeModelResolveResult | void {
+  return (event: BeforeModelResolveEvent, ctx: AgentContext): BeforeModelResolveResult | void => {
+    const sessionKey = ctx.sessionKey;
+    if (!sessionKey) return;
+
+    if (!isSessionTriggered(sessionKey) || !isSessionDenied(sessionKey)) {
       return undefined;
     }
 
-    return { model: getConfig().fallbackModel };
+    return { modelOverride: getConfig().fallbackModel };
   };
 }
