@@ -1,17 +1,21 @@
 import type { CreditsStore } from "../store/credits-store.js";
 import type { RuntimeStore } from "../store/credits-store.js";
 import type { IncomingMessage, ServerResponse } from "http";
+import type { TelegramClient } from "../telegram/telegram-api.js";
 import {
   handleDashboardPage,
   handleGetConfig,
   handlePatchConfig,
-  handleGetPrompts,
-  handlePromptRoute,
-  handleCreatePrompt,
+  handleGetTemplates,
+  handlePatchTemplates,
   handleGetGroups,
   handleGetEvents,
   handleGetMessaging,
   handlePatchMessaging,
+  handleTelegramMe,
+  handleTelegramGroups,
+  handleGroupToggle,
+  handleGetAgents,
   type ConfigContainer,
   type DashboardStores,
 } from "../dashboard/api-handlers.js";
@@ -138,6 +142,7 @@ export function registerDashboardRoutes(
   runtimeStore: RuntimeStore,
   gatewayToken: string,
   dashboardStores?: DashboardStores,
+  telegramClient?: TelegramClient | null,
 ): void {
   // Dashboard HTML page
   api.registerHttpRoute({
@@ -217,32 +222,15 @@ export function registerDashboardRoutes(
   // --- New routes for dashboard v2 ---
 
   if (dashboardStores) {
-    // Prompts list + create
+    // Injection templates (GET/PATCH)
     api.registerHttpRoute({
       path: "/plugins/access-credits/prompts",
       auth: "plugin",
       match: "exact",
       handler: async (req, res) => {
         if (!validateToken(req, res, gatewayToken)) return true;
-        if (req.method === "POST") return handleCreatePrompt(req, res, dashboardStores);
-        return handleGetPrompts(res, dashboardStores);
-      },
-    });
-
-    // Prompt detail + update + history + deploy (prefix match)
-    api.registerHttpRoute({
-      path: "/plugins/access-credits/prompts/",
-      auth: "plugin",
-      match: "prefix",
-      handler: async (req, res) => {
-        if (!validateToken(req, res, gatewayToken)) return true;
-        const url = new URL(req.url ?? "", "http://localhost");
-        const parts = url.pathname.split("/").filter(Boolean);
-        // parts: ["plugins", "access-credits", "prompts", "<id>", "<sub>?"]
-        const promptId = parts[3];
-        const subPath = parts[4];
-        if (!promptId) return json(res, 400, { error: "promptId is required" });
-        return handlePromptRoute(req, res, dashboardStores, promptId, subPath);
+        if (req.method === "PATCH") return handlePatchTemplates(req, res, dashboardStores);
+        return handleGetTemplates(res, dashboardStores);
       },
     });
 
@@ -277,6 +265,50 @@ export function registerDashboardRoutes(
         if (!validateToken(req, res, gatewayToken)) return true;
         if (req.method === "PATCH") return handlePatchMessaging(req, res, dashboardStores);
         return handleGetMessaging(res, dashboardStores);
+      },
+    });
+  }
+
+  // Telegram Bot API
+  if (dashboardStores) {
+    api.registerHttpRoute({
+      path: "/plugins/access-credits/telegram/me",
+      auth: "plugin",
+      match: "exact",
+      handler: async (req, res) => {
+        if (!validateToken(req, res, gatewayToken)) return true;
+        return handleTelegramMe(res, telegramClient ?? null);
+      },
+    });
+
+    api.registerHttpRoute({
+      path: "/plugins/access-credits/telegram/groups",
+      auth: "plugin",
+      match: "exact",
+      handler: async (req, res) => {
+        if (!validateToken(req, res, gatewayToken)) return true;
+        return handleTelegramGroups(res, dashboardStores, telegramClient ?? null);
+      },
+    });
+
+    api.registerHttpRoute({
+      path: "/plugins/access-credits/groups/toggle",
+      auth: "plugin",
+      match: "exact",
+      handler: async (req, res) => {
+        if (!validateToken(req, res, gatewayToken)) return true;
+        return handleGroupToggle(req, res, dashboardStores);
+      },
+    });
+
+    // Agents (auto-detected)
+    api.registerHttpRoute({
+      path: "/plugins/access-credits/agents",
+      auth: "plugin",
+      match: "exact",
+      handler: (req, res) => {
+        if (!validateToken(req, res, gatewayToken)) return true;
+        return handleGetAgents(res, dashboardStores);
       },
     });
   }

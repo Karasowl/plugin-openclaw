@@ -18,9 +18,16 @@ export const DASHBOARD_SCREEN = String.raw`
               '<h1 class="font-headline text-headline-lg text-on-surface">Orchestration Overview</h1>' +
               '<p class="font-body text-body-md text-on-surface-variant mt-1">Real-time performance metrics and system health</p>' +
             '</div>' +
-            '<div class="flex items-center gap-2 px-3.5 py-2 rounded-full bg-surface-container-lowest shadow-editorial">' +
-              '<span class="w-2 h-2 rounded-full bg-green-500 pulse-dot"></span>' +
-              '<span class="font-label text-label-md text-on-surface-variant">System Live</span>' +
+            '<div class="flex items-center gap-3">' +
+              '<div class="flex items-center gap-2 px-3.5 py-2 rounded-full bg-surface-container-lowest shadow-editorial">' +
+                '<span class="w-2 h-2 rounded-full bg-green-500 pulse-dot"></span>' +
+                '<span class="font-label text-label-md text-on-surface-variant">System Live</span>' +
+              '</div>' +
+              '<button onclick="toggleGlobalMode()" class="flex items-center gap-2 px-4 py-2 rounded-full shadow-editorial transition-colors ' +
+                (health.mode === 'enforce' ? 'bg-on-tertiary-container text-on-tertiary' : 'bg-surface-container-highest text-on-surface-variant') + '">' +
+                icon(health.mode === 'enforce' ? 'shield' : 'visibility', 'sm') +
+                '<span class="font-label text-label-md">' + (health.mode === 'enforce' ? 'Enforcing' : 'Observing') + '</span>' +
+              '</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -140,6 +147,17 @@ export const DASHBOARD_SCREEN = String.raw`
           '<p class="font-body text-body-md text-on-surface-variant">Failed to load dashboard: ' + esc(err.message) + '</p>' +
           '<button onclick="renderScreen(\'dashboard\')" class="btn-primary-gradient px-5 py-2 rounded-xl font-label text-label-lg">Retry</button>' +
         '</div>';
+    });
+  }
+
+  function toggleGlobalMode() {
+    var newMode = (state.health && state.health.mode === 'enforce') ? 'observe' : 'enforce';
+    saveConfig({ mode: newMode }).then(function(res) {
+      state.config = res.config;
+      showToast('Mode changed to ' + newMode, 'success');
+      renderScreen('dashboard');
+    }).catch(function(err) {
+      showToast(err.message, 'error');
     });
   }
 `;

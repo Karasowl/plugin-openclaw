@@ -1,5 +1,7 @@
 import type { CreditsStore } from "../store/credits-store.js";
 import type { AccessCreditsConfig } from "../config.js";
+import type { MessagingStore } from "../store/messaging-store.js";
+import type { TranslateService } from "../services/translate.js";
 import {
   isSessionDenied,
   isSessionTriggered,
@@ -8,17 +10,6 @@ import {
   getSessionKeyByChannel,
   getSender,
 } from "../gate-state.js";
-
-/**
- * OpenClaw lifecycle hook: message_sending
- * Registered via api.on("message_sending", handler).
- *
- * Contract: (event, ctx) => { content?, cancel? } | void
- *
- * NOTE: message_sending context does NOT include sessionKey.
- * We bridge via channelId:accountId:conversationId:senderId composite key
- * set in message:received. event.to = the original sender.
- */
 
 interface MessageSendingEvent {
   to: string;
@@ -37,29 +28,26 @@ interface MessageSendingResult {
   cancel?: boolean;
 }
 
+function interpolateTemplate(template: string, vars: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, "g"), value);
+  }
+  return result;
+}
+
 /**
  * HARD GATE - Layer 3
  * If the session was triggered AND denied, replace the bot's outbound message
- * with the appropriate denial reason.
- *
- * Credit deduction is handled in message:received (which has the real
- * sessionKey). This hook only does content replacement for denied sessions.
- *
- * KNOWN LIMITATION: message_sending does not receive sessionKey from OpenClaw.
- * Session correlation uses a FIFO bridge keyed by
- * channelId:accountId:conversationId:senderId. If two responses for the same
- * sender in the same conversation are delivered out of order, the bridge may
- * match the wrong session. Because credits are already deducted at admission
- * (in message:received), the billing impact is zero — only the denial message
- * type could be swapped (cooldown ↔ no_credits) in that rare edge case.
+ * with the appropriate denial reason using templates from messaging store.
  */
 export function createMessageSendingGateHandler(
   store: CreditsStore,
   getConfig: () => AccessCreditsConfig,
+  messagingStore?: MessagingStore,
+  translateService?: TranslateService,
 ) {
   return (event: MessageSendingEvent, ctx: MessageContext): MessageSendingResult | void => {
-    // event.to = the original sender (bot is replying to them)
-    // Look up sessionKey via full conversation+sender composite key (FIFO)
     const sessionKey = getSessionKeyByChannel({
       channelId: ctx.channelId,
       accountId: ctx.accountId,
@@ -68,30 +56,38 @@ export function createMessageSendingGateHandler(
     });
     if (!sessionKey) return;
 
-    // Only act on sessions triggered by a gated message
     if (!isSessionTriggered(sessionKey)) return;
 
     const config = getConfig();
 
     if (isSessionDenied(sessionKey)) {
-      // Denied: replace the response with reason-appropriate message
       const reason = getDenialReason(sessionKey);
       clearSession(sessionKey);
-
-      if (reason === "cooldown") {
-        return {
-          content: `⏳ Espera un momento antes de enviar otra consulta al bot.`,
-        };
-      }
 
       const senderId = getSender(sessionKey) ?? event.to;
       const user = senderId ? store.getUser(senderId) : null;
       const balance = user?.credits ?? 0;
-      return {
-        content:
-          `⛔ No tienes créditos suficientes para usar el bot. Tu balance: ${balance}. ` +
-          `Necesitas ${config.costPerMessage} crédito(s) por interacción.`,
+      const messaging = messagingStore?.get();
+
+      const vars: Record<string, string> = {
+        user_name: user?.displayName || senderId || "User",
+        credit_balance: String(balance),
+        cost: String(config.costPerMessage),
+        cooldown: String(config.cooldownSeconds),
       };
+
+      let message: string;
+      if (reason === "cooldown") {
+        message = messaging?.templates?.cooldown
+          ? interpolateTemplate(messaging.templates.cooldown, vars)
+          : `⏳ Please wait a moment before sending another query.`;
+      } else {
+        message = messaging?.templates?.insufficient_credits
+          ? interpolateTemplate(messaging.templates.insufficient_credits, vars)
+          : `⛔ You don't have enough credits. Your balance: ${balance}. You need ${config.costPerMessage} credit(s) to interact.`;
+      }
+
+      return { content: message };
     }
 
     // Admitted: credits already deducted in message:received. Just clean up.

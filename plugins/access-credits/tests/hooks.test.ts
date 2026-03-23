@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createCreditsStore, type CreditsStore } from "../src/store/credits-store.js";
 import { createMessageGateHandler } from "../src/hooks/message-gate.js";
 import { createModelGateHandler } from "../src/hooks/model-gate.js";
 import { createPromptInjectorHandler } from "../src/hooks/prompt-inject.js";
 import { createMessageSendingGateHandler } from "../src/hooks/message-sending-gate.js";
 import { createToolGateHandler } from "../src/hooks/tool-gate.js";
+import { createGroupsStore } from "../src/store/groups-store.js";
 import {
   markSessionTriggered,
   markSessionDenied,
@@ -112,7 +113,7 @@ describe("MessageGateHandler", () => {
     const event = createMessageEvent();
     await handler(event);
     expect(event.messages).toHaveLength(1);
-    expect(event.messages[0]).toContain("créditos suficientes");
+    expect(event.messages[0]).toContain("enough credits");
   });
 
   it("ignores messages without triggers", async () => {
@@ -188,7 +189,7 @@ describe("MessageGateHandler", () => {
     });
     await cooldownHandler(event2);
     expect(event2.messages).toHaveLength(1);
-    expect(event2.messages[0]).toContain("Espera");
+    expect(event2.messages[0]).toContain("wait");
   });
 
   it("stores sender and channel in gate-state for lifecycle hooks", async () => {
@@ -215,6 +216,87 @@ describe("MessageGateHandler", () => {
     expect(event.messages).toHaveLength(0);
     const user = store.getUser("user-1")!;
     expect(user.credits).toBe(10); // unchanged
+  });
+
+  it("normalizes Telegram chat ids and stores the detected chat title", async () => {
+    const groupsStore = createGroupsStore(createMockRuntimeStore());
+    const groupHandler = createMessageGateHandler(store, () => baseConfig, groupsStore);
+
+    const event = createMessageEvent({
+      context: {
+        conversationId: "telegram:-1001484119586",
+        metadata: {
+          senderId: "user-1",
+          chat: {
+            id: "-1001484119586",
+            title: "OpenClaw Operators",
+          },
+        },
+      },
+    });
+
+    await groupHandler(event);
+
+    expect(groupsStore.getAll()).toEqual([
+      expect.objectContaining({
+        chatId: "-1001484119586",
+        chatTitle: "OpenClaw Operators",
+      }),
+    ]);
+  });
+
+  it("does not use the channel type as a fallback group id", async () => {
+    const groupsStore = createGroupsStore(createMockRuntimeStore());
+    const groupHandler = createMessageGateHandler(store, () => baseConfig, groupsStore);
+
+    const event = createMessageEvent({
+      context: {
+        conversationId: undefined,
+        metadata: {
+          senderId: "user-1",
+        },
+      },
+    });
+
+    await groupHandler(event);
+
+    expect(groupsStore.getAll()).toHaveLength(0);
+  });
+});
+
+describe("GroupsStore", () => {
+  it("migrates legacy telegram-prefixed ids and refreshes names from Telegram", async () => {
+    const groupsStore = createGroupsStore(createMockRuntimeStore());
+    groupsStore.upsert("telegram:-1001484119586", "Chat telegram:-1001484119586");
+
+    const telegramClient = {
+      getMe: vi.fn(),
+      getChat: vi.fn(async () => ({
+        id: -1001484119586,
+        type: "supergroup" as const,
+        title: "Team Control Room",
+      })),
+      getChatMembersCount: vi.fn(async () => 24),
+      getChatAdministrators: vi.fn(),
+    };
+
+    const groups = await groupsStore.refreshFromTelegram(telegramClient);
+
+    expect(telegramClient.getChat).toHaveBeenCalledWith("-1001484119586");
+    expect(telegramClient.getChatMembersCount).toHaveBeenCalledWith("-1001484119586");
+    expect(groups).toEqual([
+      expect.objectContaining({
+        chatId: "-1001484119586",
+        chatTitle: "Team Control Room",
+        memberCount: 24,
+      }),
+    ]);
+    expect(groupsStore.getById("telegram:-1001484119586")).toEqual(
+      expect.objectContaining({
+        chatId: "-1001484119586",
+        chatTitle: "Team Control Room",
+      }),
+    );
   });
 });
 
@@ -488,7 +570,7 @@ describe("MessageSendingGateHandler", () => {
       { channelId: "telegram", accountId: "bot-1", conversationId: "chat-1" },
     );
     expect(result).toBeDefined();
-    expect(result!.content).toContain("créditos suficientes");
+    expect(result!.content).toContain("enough credits");
   });
 
   it("shows cooldown message when denied for cooldown", () => {
@@ -500,7 +582,7 @@ describe("MessageSendingGateHandler", () => {
       { channelId: "telegram", accountId: "bot-1", conversationId: "chat-1" },
     );
     expect(result).toBeDefined();
-    expect(result!.content).toContain("Espera");
+    expect(result!.content).toContain("wait");
     expect(result!.content).not.toContain("créditos");
   });
 
@@ -697,7 +779,7 @@ describe("GateState FIFO queue", () => {
       { channelId: "telegram", accountId: "bot-1", conversationId: "chat-1" },
     );
     expect(r2).toBeDefined();
-    expect(r2!.content).toContain("Espera"); // cooldown message
+    expect(r2!.content).toContain("wait"); // cooldown message
 
     // Key invariant: credits are unchanged in message_sending.
     // The user paid exactly once (at admission in message:received).

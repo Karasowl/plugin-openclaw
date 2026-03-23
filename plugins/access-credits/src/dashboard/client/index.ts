@@ -28,6 +28,20 @@ ${CONFIG_SCREEN}
 ${PROMPTS_SCREEN}
 ${MESSAGING_SCREEN}
 
+  // ── EXPOSE FUNCTIONS FOR INLINE ONCLICK HANDLERS ────────────────
+  window.navigateTo = navigateTo;
+  window.renderScreen = renderScreen;
+  window.toggleUserRow = toggleUserRow;
+  window.showCreditModal = showCreditModal;
+  window.paginateUsers = paginateUsers;
+  window.addChip = addChip;
+  window.removeChip = removeChip;
+  window.closeModal = closeModal;
+  window.refreshTelegramGroups = refreshTelegramGroups;
+  window.toggleGroupEnabled = toggleGroupEnabled;
+  window.toggleAgentId = toggleAgentId;
+  window.toggleGlobalMode = toggleGlobalMode;
+
   // ── BOOT ───────────────────────────────────────────────────────
   function init() {
     renderSidebar();

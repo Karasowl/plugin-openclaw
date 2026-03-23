@@ -37,6 +37,12 @@ export function createModelGateHandler(
   getConfig: () => AccessCreditsConfig,
 ): (event: BeforeModelResolveEvent, ctx: AgentContext) => BeforeModelResolveResult | void {
   return (event: BeforeModelResolveEvent, ctx: AgentContext): BeforeModelResolveResult | void => {
+    // Agent filtering: skip if this agent isn't in the configured list
+    const config = getConfig();
+    if (config.agentIds?.length > 0 && ctx.agentId && !config.agentIds.includes(ctx.agentId)) {
+      return;
+    }
+
     const sessionKey = ctx.sessionKey;
     if (!sessionKey) return;
 
@@ -44,6 +50,6 @@ export function createModelGateHandler(
       return undefined;
     }
 
-    return { modelOverride: getConfig().fallbackModel };
+    return { modelOverride: config.fallbackModel };
   };
 }

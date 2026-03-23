@@ -6,8 +6,8 @@ export const BOTTOM_NAV_SCRIPT = String.raw`
     var items = [
       { screen: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
       { screen: 'users', icon: 'group', label: 'Groups' },
-      { screen: 'prompts', icon: 'terminal', label: 'Prompts' },
-      { screen: 'messaging', icon: 'forum', label: 'Messages' },
+      { screen: 'prompts', icon: 'chat_bubble', label: 'Responses' },
+      { screen: 'messaging', icon: 'language', label: 'Language' },
       { screen: 'settings', icon: 'settings', label: 'Config' },
     ];
 

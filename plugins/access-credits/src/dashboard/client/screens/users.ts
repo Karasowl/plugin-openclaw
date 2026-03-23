@@ -62,22 +62,32 @@ export const USERS_SCREEN = String.raw`
           '</div>' +
 
           // Groups section
-          (state.groups.length > 0 ?
-            '<div class="bg-surface-container-lowest rounded-2xl shadow-editorial p-5 mt-5">' +
-              '<h3 class="font-headline text-title-md text-on-surface mb-4">Detected Groups</h3>' +
-              '<div class="space-y-3">' +
-                state.groups.map(function(g) {
-                  return '<div class="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-container-low transition-colors">' +
-                    avatar(g.chatTitle, 'w-9 h-9 text-body-sm') +
-                    '<div class="flex-1 min-w-0">' +
-                      '<div class="font-body text-body-md font-medium text-on-surface truncate">' + esc(g.chatTitle) + '</div>' +
-                      '<div class="font-label text-label-sm text-on-surface-variant">' + formatNumber(g.memberCount) + ' members</div>' +
+          '<div class="bg-surface-container-lowest rounded-2xl shadow-editorial p-5 mt-5">' +
+            '<div class="flex items-center justify-between mb-3">' +
+              '<h3 class="font-headline text-title-md text-on-surface">Detected Groups</h3>' +
+              '<button onclick="refreshTelegramGroups()" class="flex items-center gap-1.5 bg-secondary-container text-on-secondary-container px-3 py-1.5 rounded-xl font-label text-label-md hover:opacity-80">' +
+                icon('refresh', 'sm') + 'Refresh' +
+              '</button>' +
+            '</div>' +
+            '<p class="font-body text-body-sm text-on-surface-variant mb-4">Groups appear automatically when the bot receives messages. Use Refresh to fetch live data from Telegram.</p>' +
+            '<div id="groups-list" class="space-y-3">' +
+              (state.groups.length > 0 ? state.groups.map(function(g) {
+                return '<div class="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-container-low transition-colors">' +
+                  avatar(g.chatTitle, 'w-9 h-9 text-body-sm') +
+                  '<div class="flex-1 min-w-0">' +
+                    '<div class="font-body text-body-md font-medium text-on-surface truncate">' + esc(g.chatTitle) + '</div>' +
+                    '<div class="font-label text-label-sm text-on-surface-variant">' +
+                      (g.memberCount > 0 ? formatNumber(g.memberCount) + ' members · ' : '') +
+                      relativeTime(g.lastActivity) +
                     '</div>' +
-                    badge(g.status, g.status === 'active' ? 'bg-on-tertiary-container/10 text-on-tertiary-container' : 'bg-surface-container-high text-on-surface-variant') +
-                  '</div>';
-                }).join('') +
-              '</div>' +
-            '</div>' : '') +
+                  '</div>' +
+                  '<div onclick="toggleGroupEnabled(\'' + esc(g.chatId) + '\',' + (g.enabled === false ? 'true' : 'false') + ')" class="toggle-track ' + (g.enabled !== false ? 'active' : '') + '" title="' + (g.enabled !== false ? 'Credit system active' : 'Credit system disabled') + '">' +
+                    '<div class="toggle-thumb"></div>' +
+                  '</div>' +
+                '</div>';
+              }).join('') : '<p class="font-body text-body-sm text-on-surface-variant text-center py-4">No groups detected yet. Groups appear when the bot receives messages.</p>') +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>'
     );
@@ -289,5 +299,27 @@ export const USERS_SCREEN = String.raw`
   function paginateUsers(newOffset) {
     state.pagination.offset = Math.max(0, newOffset);
     fetchUsersPage();
+  }
+
+  function refreshTelegramGroups() {
+    showToast('Refreshing groups from Telegram...', 'success');
+    loadTelegramGroups().then(function(data) {
+      state.groups = data.groups || [];
+      showToast('Groups refreshed' + (data.source === 'telegram' ? ' from Telegram' : ' from cache'), 'success');
+      renderScreen('users');
+    }).catch(function(err) {
+      showToast('Failed to refresh: ' + err.message, 'error');
+    });
+  }
+
+  function toggleGroupEnabled(chatId, enabled) {
+    toggleGroup(chatId, enabled).then(function(data) {
+      var g = state.groups.find(function(g) { return g.chatId === chatId; });
+      if (g) g.enabled = enabled;
+      showToast('Group ' + (enabled ? 'enabled' : 'disabled'), 'success');
+      renderScreen('users');
+    }).catch(function(err) {
+      showToast(err.message, 'error');
+    });
   }
 `;

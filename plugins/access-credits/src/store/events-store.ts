@@ -2,6 +2,7 @@ import type { RuntimeStore } from "./credits-store.js";
 import type { SystemEvent } from "./types.js";
 
 const STORE_KEY = "ac:events";
+const AGENTS_KEY = "ac:seen-agents";
 const MAX_EVENTS = 100;
 
 function generateId(): string {
@@ -11,6 +12,8 @@ function generateId(): string {
 export interface EventsStore {
   getAll(limit?: number): SystemEvent[];
   push(type: SystemEvent["type"], description: string, metadata?: Record<string, unknown>): SystemEvent;
+  trackAgent(agentId: string): void;
+  getSeenAgents(): string[];
 }
 
 export function createEventsStore(runtimeStore: RuntimeStore): EventsStore {
@@ -37,12 +40,23 @@ export function createEventsStore(runtimeStore: RuntimeStore): EventsStore {
         metadata,
       };
       events.push(event);
-      // Ring buffer: keep only the last MAX_EVENTS
       if (events.length > MAX_EVENTS) {
         events.splice(0, events.length - MAX_EVENTS);
       }
       saveData(events);
       return event;
+    },
+
+    trackAgent(agentId: string): void {
+      const seen = (runtimeStore.get(AGENTS_KEY) as string[] | undefined) ?? [];
+      if (!seen.includes(agentId)) {
+        seen.push(agentId);
+        runtimeStore.set(AGENTS_KEY, seen);
+      }
+    },
+
+    getSeenAgents(): string[] {
+      return (runtimeStore.get(AGENTS_KEY) as string[] | undefined) ?? [];
     },
   };
 }

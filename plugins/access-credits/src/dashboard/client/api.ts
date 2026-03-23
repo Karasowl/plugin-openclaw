@@ -52,26 +52,26 @@ export const API_SCRIPT = String.raw`
   function saveConfig(patch) {
     return apiFetch('/config', { method: 'PATCH', body: patch });
   }
-  function loadPrompts() {
+  function loadTemplates() {
     return apiFetch('/prompts');
   }
-  function loadPrompt(id) {
-    return apiFetch('/prompts/' + encodeURIComponent(id));
-  }
-  function savePrompt(id, patch) {
-    return apiFetch('/prompts/' + encodeURIComponent(id), { method: 'PATCH', body: patch });
-  }
-  function createPrompt(data) {
-    return apiFetch('/prompts', { method: 'POST', body: data });
-  }
-  function deployPrompt(id) {
-    return apiFetch('/prompts/' + encodeURIComponent(id) + '/deploy', { method: 'POST' });
-  }
-  function loadPromptHistory(id) {
-    return apiFetch('/prompts/' + encodeURIComponent(id) + '/history');
+  function saveTemplates(patch) {
+    return apiFetch('/prompts', { method: 'PATCH', body: patch });
   }
   function loadGroups() {
     return apiFetch('/groups');
+  }
+  function loadTelegramGroups() {
+    return apiFetch('/telegram/groups');
+  }
+  function loadTelegramMe() {
+    return apiFetch('/telegram/me');
+  }
+  function toggleGroup(chatId, enabled) {
+    return apiFetch('/groups/toggle', { method: 'POST', body: { chatId: chatId, enabled: enabled } });
+  }
+  function loadAgents() {
+    return apiFetch('/agents');
   }
   function loadEvents() {
     return apiFetch('/events');

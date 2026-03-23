@@ -44,10 +44,16 @@ const SELF_TOOLS = new Set([
  */
 export function createToolGateHandler(
   _store: CreditsStore,
-  _getConfig: () => AccessCreditsConfig,
+  getConfig: () => AccessCreditsConfig,
 ) {
   return (event: BeforeToolCallEvent, ctx: ToolContext): BeforeToolCallResult | void => {
     if (event.toolName && SELF_TOOLS.has(event.toolName)) return;
+
+    // Agent filtering: skip if this agent isn't in the configured list
+    const config = getConfig();
+    if (config.agentIds?.length > 0 && ctx.agentId && !config.agentIds.includes(ctx.agentId)) {
+      return;
+    }
 
     const sessionKey = ctx.sessionKey;
     if (!sessionKey) return;

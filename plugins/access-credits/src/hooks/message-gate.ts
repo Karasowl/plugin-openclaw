@@ -36,6 +36,99 @@ function isMessageReceivedContext(ctx: Record<string, unknown>): ctx is MessageR
   return typeof ctx.from === "string" && typeof ctx.content === "string" && typeof ctx.channelId === "string";
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function getNestedValue(record: Record<string, unknown> | undefined, path: string): unknown {
+  let current: unknown = record;
+  for (const segment of path.split(".")) {
+    const currentRecord = asRecord(current);
+    if (!currentRecord) return undefined;
+    current = currentRecord[segment];
+  }
+  return current;
+}
+
+function firstNonEmptyString(...values: Array<string | null | undefined>): string {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function firstMetadataString(metadata: Record<string, unknown> | undefined, paths: string[]): string {
+  for (const path of paths) {
+    const value = getNestedValue(metadata, path);
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function normalizeTelegramChatId(chatId: string, channelId: string): string {
+  const value = chatId.trim();
+  if (!value) return "";
+
+  const prefixed = /^telegram:(-?\d+)$/i.exec(value);
+  if (prefixed) return prefixed[1];
+
+  if (channelId === "telegram" && /^-?\d+$/.test(value)) return value;
+  return value;
+}
+
+function resolveTrackedChatId(ctx: MessageReceivedContext): string {
+  const metadata = asRecord(ctx.metadata) ?? undefined;
+  const metadataChatId = firstMetadataString(metadata, [
+    "telegramChatId",
+    "chatId",
+    "groupId",
+    "conversation.id",
+    "conversationId",
+    "chat.id",
+    "group.id",
+  ]);
+
+  return firstNonEmptyString(
+    normalizeTelegramChatId(metadataChatId, ctx.channelId),
+    normalizeTelegramChatId(typeof ctx.conversationId === "string" ? ctx.conversationId : "", ctx.channelId),
+  );
+}
+
+function resolveTrackedChatTitle(ctx: MessageReceivedContext): string {
+  const metadata = asRecord(ctx.metadata) ?? undefined;
+  const directTitle = firstMetadataString(metadata, [
+    "chatTitle",
+    "groupName",
+    "chatName",
+    "conversationName",
+    "roomName",
+    "channelName",
+    "subject",
+    "chat.title",
+    "group.title",
+    "conversation.title",
+    "room.title",
+    "channel.title",
+    "chat.name",
+    "group.name",
+    "conversation.name",
+    "room.name",
+    "channel.name",
+  ]);
+
+  if (directTitle) return directTitle;
+
+  const fullName = [firstMetadataString(metadata, ["chat.first_name", "chat.firstName"]), firstMetadataString(metadata, ["chat.last_name", "chat.lastName"])]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return fullName || firstMetadataString(metadata, ["chat.username"]);
+}
+
 function matchesTrigger(content: string, triggerHashtags: string[], triggerCommands: string[]): boolean {
   const lower = content.toLowerCase().trim();
 
@@ -71,19 +164,18 @@ export function createMessageGateHandler(
 
     const config = getConfig();
 
-    // Track group metadata from every message (not just triggered ones)
-    if (groupsStore && ctx.channelId) {
-      const chatTitle = typeof ctx.metadata?.chatTitle === "string"
-        ? ctx.metadata.chatTitle
-        : typeof ctx.metadata?.groupName === "string"
-          ? ctx.metadata.groupName
-          : "";
-      if (chatTitle) {
-        groupsStore.upsert(ctx.channelId, chatTitle);
-      }
+    const trackedChatId = resolveTrackedChatId(ctx);
+    if (groupsStore && trackedChatId) {
+      const chatTitle = resolveTrackedChatTitle(ctx);
+      groupsStore.upsert(trackedChatId, chatTitle || ("Chat " + trackedChatId));
     }
 
     if (!matchesTrigger(content, config.triggerHashtags, config.triggerCommands)) return;
+
+    // Check if this group has the credit system disabled
+    if (trackedChatId && groupsStore && !groupsStore.isEnabled(trackedChatId)) return;
+
+    const conversationId = typeof ctx.conversationId === "string" ? ctx.conversationId : undefined;
 
     const senderId = extractSenderId(ctx);
 
@@ -94,7 +186,7 @@ export function createMessageGateHandler(
       setChannelSession({
         channelId: ctx.channelId,
         accountId: typeof ctx.accountId === "string" ? ctx.accountId : undefined,
-        conversationId: typeof ctx.conversationId === "string" ? ctx.conversationId : undefined,
+        conversationId,
         senderId,
       }, event.sessionKey);
     }
@@ -118,7 +210,7 @@ export function createMessageGateHandler(
       if (config.mode === "enforce") {
         markSessionDenied(event.sessionKey, "cooldown");
         event.messages.push(
-          `⏳ Espera un momento antes de enviar otra consulta al bot.`,
+          `⏳ Please wait a moment before sending another query.`,
         );
       }
       return;
@@ -136,7 +228,7 @@ export function createMessageGateHandler(
     if (!result.success) {
       markSessionDenied(event.sessionKey, "no_credits");
       event.messages.push(
-        `⛔ No tienes créditos suficientes. Tu balance: ${result.balance}. Necesitas ${config.costPerMessage} para interactuar con el bot.`,
+        `⛔ You don't have enough credits. Your balance: ${result.balance}. You need ${config.costPerMessage} to interact with the bot.`,
       );
     } else {
       eventsStore?.push("credits_deducted", `${senderName || senderId}: -${config.costPerMessage} credit (balance: ${result.balance})`, { userId: senderId });

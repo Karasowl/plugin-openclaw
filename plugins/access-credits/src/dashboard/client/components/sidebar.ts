@@ -6,8 +6,8 @@ export const SIDEBAR_SCRIPT = String.raw`
     var items = [
       { screen: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
       { screen: 'users', icon: 'group', label: 'Groups & Users' },
-      { screen: 'prompts', icon: 'terminal', label: 'System Prompts' },
-      { screen: 'messaging', icon: 'forum', label: 'Messaging' },
+      { screen: 'prompts', icon: 'chat_bubble', label: 'Responses' },
+      { screen: 'messaging', icon: 'language', label: 'Language' },
       { screen: 'settings', icon: 'settings', label: 'Settings' },
     ];
 

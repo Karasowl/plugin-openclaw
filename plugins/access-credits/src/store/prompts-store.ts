@@ -1,135 +1,71 @@
 import type { RuntimeStore } from "./credits-store.js";
-import type { SystemPrompt, PromptVersion } from "./types.js";
 
-const STORE_KEY = "ac:prompts";
-const HISTORY_KEY = "ac:prompt-history";
+const STORE_KEY = "ac:injection-templates";
 
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+export interface InjectionTemplates {
+  denial: string;
+  cooldown: string;
+  activeUser: string;
+  contribution: string;
+  promotion: string;
 }
 
+const DEFAULT_TEMPLATES: InjectionTemplates = {
+  denial:
+    '[ACCESS-CREDITS] User "{senderId}" has {balance} credits. ' +
+    'They need {cost} credits to interact. ' +
+    'DO NOT process their request. Reply ONLY with a brief message ' +
+    'telling them they don\'t have enough credits and their current balance is {balance}.',
+  cooldown:
+    '[ACCESS-CREDITS] User "{senderId}" is on cooldown. ' +
+    'DO NOT process their request. Reply ONLY with a brief message ' +
+    'telling them to wait a moment before sending another query.',
+  activeUser:
+    '[ACCESS-CREDITS] User "{senderId}" has {balance} credits. ' +
+    'Each interaction costs {cost} credit(s). Credits are deducted automatically.',
+  contribution:
+    'The user\'s message is {contentLength} characters long. ' +
+    'Evaluate if it contains a genuinely valuable intellectual contribution ' +
+    '(original insight, helpful knowledge, creative idea, useful resource). ' +
+    'If so, use the "access_credits_award" tool to award them {reward} credit(s). ' +
+    'Be selective: only reward real contributions, not casual chat or simple questions.',
+  promotion: '',
+};
+
 export interface PromptsStore {
-  getAll(): SystemPrompt[];
-  getById(id: string): SystemPrompt | null;
-  create(data: Omit<SystemPrompt, "id" | "version" | "isActive" | "deployedAt" | "createdAt" | "updatedAt">): SystemPrompt;
-  update(id: string, patch: Partial<Pick<SystemPrompt, "name" | "content" | "modelContext" | "temperature">>): SystemPrompt | null;
-  deploy(id: string): SystemPrompt | null;
-  getHistory(id: string): PromptVersion[];
-  remove(id: string): boolean;
+  getTemplates(): InjectionTemplates;
+  updateTemplate(key: keyof InjectionTemplates, value: string): InjectionTemplates;
+  updateTemplates(patch: Partial<InjectionTemplates>): InjectionTemplates;
 }
 
 export function createPromptsStore(runtimeStore: RuntimeStore): PromptsStore {
-  function getData(): SystemPrompt[] {
-    const raw = runtimeStore.get(STORE_KEY) as SystemPrompt[] | undefined;
-    return raw ?? [];
+  function getData(): InjectionTemplates {
+    const raw = runtimeStore.get(STORE_KEY) as Partial<InjectionTemplates> | undefined;
+    return { ...DEFAULT_TEMPLATES, ...(raw || {}) };
   }
-  function saveData(prompts: SystemPrompt[]): void {
-    runtimeStore.set(STORE_KEY, prompts);
-  }
-  function getHistoryData(): Record<string, PromptVersion[]> {
-    const raw = runtimeStore.get(HISTORY_KEY) as Record<string, PromptVersion[]> | undefined;
-    return raw ?? {};
-  }
-  function saveHistoryData(history: Record<string, PromptVersion[]>): void {
-    runtimeStore.set(HISTORY_KEY, history);
+  function saveData(templates: InjectionTemplates): void {
+    runtimeStore.set(STORE_KEY, templates);
   }
 
   return {
-    getAll(): SystemPrompt[] {
+    getTemplates(): InjectionTemplates {
       return getData();
     },
 
-    getById(id: string): SystemPrompt | null {
-      return getData().find((p) => p.id === id) ?? null;
+    updateTemplate(key, value) {
+      const templates = getData();
+      templates[key] = value;
+      saveData(templates);
+      return templates;
     },
 
-    create(data) {
-      const prompts = getData();
-      const now = new Date().toISOString();
-      const prompt: SystemPrompt = {
-        ...data,
-        id: generateId(),
-        version: 1,
-        isActive: false,
-        deployedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      };
-      prompts.push(prompt);
-      saveData(prompts);
-
-      // Initial version history entry
-      const history = getHistoryData();
-      history[prompt.id] = [{ version: 1, content: data.content, deployedAt: null, createdAt: now }];
-      saveHistoryData(history);
-
-      return prompt;
-    },
-
-    update(id, patch) {
-      const prompts = getData();
-      const idx = prompts.findIndex((p) => p.id === id);
-      if (idx === -1) return null;
-
-      const prompt = prompts[idx];
-      const now = new Date().toISOString();
-      if (patch.name !== undefined) prompt.name = patch.name;
-      if (patch.content !== undefined) prompt.content = patch.content;
-      if (patch.modelContext !== undefined) prompt.modelContext = patch.modelContext;
-      if (patch.temperature !== undefined) prompt.temperature = patch.temperature;
-
-      prompt.version += 1;
-      prompt.updatedAt = now;
-      saveData(prompts);
-
-      // Append version history
-      const history = getHistoryData();
-      if (!history[id]) history[id] = [];
-      history[id].push({ version: prompt.version, content: prompt.content, deployedAt: null, createdAt: now });
-      saveHistoryData(history);
-
-      return prompt;
-    },
-
-    deploy(id) {
-      const prompts = getData();
-      const idx = prompts.findIndex((p) => p.id === id);
-      if (idx === -1) return null;
-
-      const now = new Date().toISOString();
-      // Deactivate all prompts of same type
-      const promptType = prompts[idx].type;
-      for (const p of prompts) {
-        if (p.type === promptType) p.isActive = false;
+    updateTemplates(patch) {
+      const templates = getData();
+      for (const key of Object.keys(patch) as (keyof InjectionTemplates)[]) {
+        if (patch[key] !== undefined) templates[key] = patch[key];
       }
-      prompts[idx].isActive = true;
-      prompts[idx].deployedAt = now;
-      prompts[idx].updatedAt = now;
-      saveData(prompts);
-
-      // Mark version as deployed in history
-      const history = getHistoryData();
-      const versions = history[id];
-      if (versions && versions.length > 0) {
-        versions[versions.length - 1].deployedAt = now;
-        saveHistoryData(history);
-      }
-
-      return prompts[idx];
-    },
-
-    getHistory(id) {
-      const history = getHistoryData();
-      return (history[id] ?? []).slice().reverse();
-    },
-
-    remove(id) {
-      const prompts = getData();
-      const idx = prompts.findIndex((p) => p.id === id);
-      if (idx === -1) return false;
-      prompts.splice(idx, 1);
-      saveData(prompts);
-      return true;
+      saveData(templates);
+      return templates;
     },
   };
 }

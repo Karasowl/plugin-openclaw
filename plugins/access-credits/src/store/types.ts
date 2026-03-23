@@ -72,6 +72,7 @@ export interface GroupInfo {
   chatTitle: string;
   memberCount: number;
   status: "active" | "paused";
+  enabled: boolean;
   lastActivity: string;
 }
 
@@ -87,5 +88,5 @@ export interface MessagingConfig {
   locale: string;
   autoDetect: boolean;
   templates: Record<string, string>;
-  regions: Array<{ name: string; locale: string; active: boolean }>;
+  translateApiUrl: string;
 }
