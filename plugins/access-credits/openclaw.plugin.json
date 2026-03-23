@@ -5,93 +5,151 @@
     "properties": {
       "mode": {
         "type": "string",
-        "enum": [
-          "observe",
-          "enforce"
-        ],
+        "enum": ["observe", "enforce"],
         "default": "enforce",
-        "description": "observe: only log activity without blocking. enforce: full credit gate with blocking."
+        "description": "observe: log activity without blocking. enforce: full credit gate with blocking."
       },
       "initialCredits": {
         "type": "number",
         "default": 10,
-        "description": "Credits given to new users on first interaction"
-      },
-      "costPerMessage": {
-        "type": "number",
-        "default": 1,
-        "description": "Credits deducted per bot interaction"
+        "description": "Credits given to new users on first interaction."
       },
       "triggerHashtags": {
         "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "default": [
-          "#ask",
-          "#bot"
-        ],
-        "description": "Hashtags that trigger credit-gated bot interaction"
+        "items": { "type": "string" },
+        "default": ["#ask", "#bot"],
+        "description": "Hashtags that trigger credit-gated bot interaction."
       },
       "triggerCommands": {
         "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "default": [
-          "/ask",
-          "/bot"
-        ],
-        "description": "Commands that trigger credit-gated bot interaction"
+        "items": { "type": "string" },
+        "default": ["/ask", "/bot"],
+        "description": "Commands that trigger credit-gated bot interaction."
       },
       "adminUsers": {
         "type": "array",
-        "items": {
-          "type": "string"
-        },
+        "items": { "type": "string" },
         "default": [],
-        "description": "User IDs that bypass credit checks and can manage credits"
+        "description": "User IDs that bypass credit checks and can manage credits."
       },
       "agentIds": {
         "type": "array",
-        "items": {
-          "type": "string"
-        },
+        "items": { "type": "string" },
         "default": [],
-        "description": "Agent IDs to apply credit system to. Empty array = all agents."
-      },
-      "chatTypes": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "default": [],
-        "description": "Chat types to apply credit system to: 'group', 'direct'. Empty array = all."
+        "description": "Agent IDs to apply the credit system to. Empty array = all agents."
       },
       "fallbackModel": {
         "type": "string",
         "default": "cheapest",
-        "description": "Model to use when user has no credits (minimizes token cost)"
-      },
-      "evaluateContributions": {
-        "type": "boolean",
-        "default": true,
-        "description": "Whether the bot should evaluate user contributions and award credits"
+        "description": "Model to use when a user is denied, to minimize token cost."
       },
       "contributionReward": {
         "type": "number",
         "default": 2,
-        "description": "Credits awarded for a valuable contribution"
+        "description": "Credits awarded for a valuable contribution."
       },
       "contributionMinLength": {
         "type": "number",
         "default": 100,
-        "description": "Minimum message length (chars) to evaluate for contribution rewards. Avoids wasting tokens on short messages."
+        "description": "Minimum message length to evaluate for contribution rewards."
+      },
+      "groups": {
+        "type": "object",
+        "description": "Credit policy for group chats.",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "costPerMessage": {
+            "type": "number",
+            "default": 1
+          },
+          "evaluateContributions": {
+            "type": "string",
+            "enum": ["always", "groups-only", "admin-only", "off"],
+            "default": "always"
+          },
+          "cooldownSeconds": {
+            "type": "number",
+            "default": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "directMessages": {
+        "type": "object",
+        "description": "Credit policy for direct messages.",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "costPerMessage": {
+            "type": "number",
+            "default": 1
+          },
+          "evaluateContributions": {
+            "type": "string",
+            "enum": ["always", "groups-only", "admin-only", "off"],
+            "default": "admin-only"
+          },
+          "cooldownSeconds": {
+            "type": "number",
+            "default": 0
+          },
+          "allowModelChoice": {
+            "type": "boolean",
+            "default": false
+          },
+          "defaultModel": {
+            "type": "string",
+            "default": "sonnet"
+          },
+          "models": {
+            "type": "object",
+            "default": {
+              "sonnet": {
+                "label": "Claude Sonnet",
+                "model": "anthropic/claude-sonnet-4-5",
+                "costPerMessage": 1
+              },
+              "opus": {
+                "label": "Claude Opus",
+                "model": "anthropic/claude-opus-4-6",
+                "costPerMessage": 3
+              }
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string" },
+                "model": { "type": "string" },
+                "costPerMessage": { "type": "number" }
+              },
+              "required": ["label", "model", "costPerMessage"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "costPerMessage": {
+        "type": "number",
+        "description": "Deprecated legacy field. Migrated into both groups and directMessages."
+      },
+      "evaluateContributions": {
+        "type": "boolean",
+        "description": "Deprecated legacy field. Migrated into groups/directMessages contribution modes."
       },
       "cooldownSeconds": {
         "type": "number",
-        "default": 0,
-        "description": "Minimum seconds between bot interactions per user. 0 = no cooldown. This is a hard gate independent of LLM."
+        "description": "Deprecated legacy field. Migrated into both groups and directMessages."
+      },
+      "chatTypes": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Deprecated legacy field. Use groups.enabled and directMessages.enabled."
       }
     },
     "additionalProperties": false

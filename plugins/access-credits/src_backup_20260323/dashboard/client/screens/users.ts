@@ -175,6 +175,9 @@ export const USERS_SCREEN = String.raw`
           '<div class="flex-1 min-w-0">' +
             '<div class="font-body text-body-md font-medium text-on-surface truncate">' + esc(u.displayName || u.userId) + '</div>' +
             '<div class="font-label text-label-sm text-on-surface-variant">ID: ' + esc(u.userId) + '</div>' +
+            (u.preferences && u.preferences.selectedModel ?
+              '<div class="font-label text-label-sm text-on-tertiary-container mt-1">DM model: ' + esc(u.preferences.selectedModel) + '</div>' :
+              '') +
           '</div>' +
           '<div class="hidden sm:flex items-center gap-6 text-right">' +
             '<div><div class="font-headline text-title-md font-bold text-on-surface">' + formatNumber(u.credits) + '</div><div class="font-label text-label-sm text-on-surface-variant">balance</div></div>' +

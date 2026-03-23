@@ -65,7 +65,6 @@ export interface AccessCreditsConfigPatch {
   contributionMinLength?: number;
   groups?: ContextConfigPatch;
   directMessages?: DirectMessageConfigPatch;
-  [key: string]: unknown;
 }
 
 export interface UserConfigPreferences {

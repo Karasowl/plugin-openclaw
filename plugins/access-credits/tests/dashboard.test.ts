@@ -78,9 +78,9 @@ describe("buildDashboardHtml", () => {
     const html = buildDashboardHtml(DEFAULT_CONFIG);
     expect(html).toContain("<!doctype html>");
     expect(html).toContain("Access Credits");
-    expect(html).toContain('data-screen');
-    expect(html).toContain('id="main-content"');
-    expect(html).toContain('id="sidebar"');
+    expect(html).toContain('data-tab="overview"');
+    expect(html).toContain('data-tab="users"');
+    expect(html).toContain('data-tab="config"');
     expect(html).toContain("__INITIAL_CONFIG__");
     expect(html).toContain("__API_BASE__");
   });
@@ -95,12 +95,9 @@ describe("buildDashboardHtml", () => {
 
 describe("handleDashboardPage", () => {
   it("returns 200 with HTML content type", () => {
-    const req = createMockReq("GET");
-    (req as Record<string, unknown>).url = "/plugins/access-credits?token=test-token";
-    (req as Record<string, unknown>).headers = {};
     const res = createMockRes();
     const container: ConfigContainer = { current: DEFAULT_CONFIG };
-    handleDashboardPage(req as never, res as never, container, "test-token");
+    handleDashboardPage(res as never, container);
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toContain("text/html");
     expect(res.headers["cache-control"]).toBe("no-store");
@@ -204,7 +201,7 @@ describe("handleHealthCheck", () => {
     handleHealthCheck(res as never, store, container);
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body.version).toBe("0.2.0");
+    expect(body.version).toBe("0.1.0");
     expect(body.mode).toBe("enforce");
     expect(body.storeStatus).toBe("ok");
     expect(body.totalUsers).toBe(1);

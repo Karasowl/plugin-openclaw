@@ -2,32 +2,16 @@ import type { CreditsStore } from "../store/credits-store.js";
 import type { AccessCreditsConfig } from "../config.js";
 import { isSessionDenied, isSessionTriggered } from "../gate-state.js";
 
-/**
- * OpenClaw lifecycle hook: before_tool_call
- * Registered via api.on("before_tool_call", handler).
- *
- * Contract: (event, ctx) => { block?, blockReason? } | void
- */
-
-interface BeforeToolCallEvent {
-  toolName: string;
-  params: Record<string, unknown>;
-  runId?: string;
-  toolCallId?: string;
-}
-
-interface ToolContext {
-  agentId?: string;
-  sessionKey?: string;
-  sessionId?: string;
-  runId?: string;
-  toolName: string;
-  toolCallId?: string;
-}
-
-interface BeforeToolCallResult {
-  block?: boolean;
-  blockReason?: string;
+interface ToolCallEvent {
+  type: string;
+  action: string;
+  sessionKey: string;
+  context: {
+    senderId?: string;
+    from?: string;
+    toolName?: string;
+    block?: (errorMessage: string) => void;
+  };
 }
 
 // Tools that the access-credits plugin itself registers (always allowed)
@@ -44,26 +28,19 @@ const SELF_TOOLS = new Set([
  */
 export function createToolGateHandler(
   _store: CreditsStore,
-  getConfig: () => AccessCreditsConfig,
+  _getConfig: () => AccessCreditsConfig,
 ) {
-  return (event: BeforeToolCallEvent, ctx: ToolContext): BeforeToolCallResult | void => {
-    if (event.toolName && SELF_TOOLS.has(event.toolName)) return;
-
-    // Agent filtering: skip if this agent isn't in the configured list
-    const config = getConfig();
-    if (config.agentIds?.length > 0 && ctx.agentId && !config.agentIds.includes(ctx.agentId)) {
-      return;
-    }
-
-    const sessionKey = ctx.sessionKey;
-    if (!sessionKey) return;
+  return (event: ToolCallEvent): void => {
+    const toolName = event.context.toolName;
+    if (toolName && SELF_TOOLS.has(toolName)) return;
 
     // Only block if this session was triggered by a gated message AND denied
-    if (!isSessionTriggered(sessionKey) || !isSessionDenied(sessionKey)) return;
+    if (!isSessionTriggered(event.sessionKey) || !isSessionDenied(event.sessionKey)) return;
 
-    return {
-      block: true,
-      blockReason: "Access denied: user does not have enough credits to use tools.",
-    };
+    if (event.context.block) {
+      event.context.block(
+        "Access denied: user does not have enough credits to use tools.",
+      );
+    }
   };
 }

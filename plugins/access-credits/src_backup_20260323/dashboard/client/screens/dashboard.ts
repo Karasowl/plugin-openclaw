@@ -117,9 +117,11 @@ export const DASHBOARD_SCREEN = String.raw`
                   '<div class="flex justify-between font-body text-body-sm text-on-primary/80">' +
                     '<span>Mode</span><span class="font-medium text-on-primary">' + esc(health.mode || 'enforce') + '</span></div>' +
                   '<div class="flex justify-between font-body text-body-sm text-on-primary/80">' +
-                    '<span>Cost per message</span><span class="font-medium text-on-primary">' + (state.config.costPerMessage || 1) + ' credit</span></div>' +
+                    '<span>Group cost</span><span class="font-medium text-on-primary">' + (((state.config.groups || {}).costPerMessage) || 1) + ' credit(s)</span></div>' +
                   '<div class="flex justify-between font-body text-body-sm text-on-primary/80">' +
-                    '<span>Contributions</span><span class="font-medium text-on-primary">' + (state.config.evaluateContributions ? 'Enabled' : 'Disabled') + '</span></div>' +
+                    '<span>DM model choice</span><span class="font-medium text-on-primary">' + ((((state.config.directMessages || {}).allowModelChoice)) ? 'Enabled' : 'Disabled') + '</span></div>' +
+                  '<div class="flex justify-between font-body text-body-sm text-on-primary/80">' +
+                    '<span>DM default model</span><span class="font-medium text-on-primary">' + esc((((state.config.directMessages || {}).defaultModel) || 'sonnet')) + '</span></div>' +
                 '</div>' +
                 '<button onclick="navigateTo(\'settings\')" class="w-full bg-on-primary text-primary-container py-2.5 rounded-xl font-label text-label-lg hover:bg-on-primary/90 transition-colors">Manage Settings</button>' +
               '</div>' +
